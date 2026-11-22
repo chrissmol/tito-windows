@@ -48,6 +48,8 @@ jobs:
 
   build:
     runs-on: windows-2022
+    permissions:
+      contents: write # only to refresh the lab-previews branch
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
       - name: Compile
@@ -67,6 +69,21 @@ jobs:
             Dados/preview-notes.txt
             Dados/morph/*.png
           if-no-files-found: error
+      - name: Publish lab screenshots to lab-previews branch
+        if: always() && github.event.pull_request.head.repo.fork != true
+        continue-on-error: true
+        shell: powershell
+        run: |
+          $out = Join-Path $env:RUNNER_TEMP 'lab'
+          New-Item -ItemType Directory $out | Out-Null
+          Copy-Item Dados\laboratorio*, Dados\preview-*.png $out
+          Set-Location $out
+          git init -q; git checkout -q -b lab-previews
+          git config user.name 'github-actions'; git config user.email 'actions@users.noreply.github.com'
+          git add -A; git commit -q -m ("Lab screenshots " + $env:GITHUB_SHA)
+          git push -q -f ("https://x-access-token:" + $env:GITHUB_TOKEN + "@github.com/" + $env:GITHUB_REPOSITORY + ".git") lab-previews
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Package unsigned build
         shell: powershell
         run: .\scripts\Package.ps1 -SkipBuild
