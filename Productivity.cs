@@ -140,6 +140,8 @@ public partial class App {
   int min=(int)(focusToday/60);
   if(min!=focusSavedMin||stopped){focusSavedMin=min;try{File.WriteAllText(FocusPath(),focusDay+"|"+focusToday.ToString("F0",CultureInfo.InvariantCulture));}catch{}if(focusLabel!=null&&page=="focus")focusLabel.Text=FocusTodayText();}
  }
+ // Sem mídia, o cartão do início mostra o próximo lembrete (ou um vencido ainda não concluído) de hoje.
+ static string[] NextAgenda(){var now=DateTime.Now;return AgendaEntries().FirstOrDefault(p=>{var at=AgendaAt(p);return at.Date==now.Date&&(at>now||now-at<=TimeSpan.FromHours(2));});}
  static void AgendaReminderTick(){
   DateTime now=DateTime.Now;if(now-lastAgendaCheck<TimeSpan.FromSeconds(1))return;lastAgendaCheck=now;bool soon=false;var due=new List<string[]>();var all=AgendaEntries();
   foreach(var p in all){DateTime at=AgendaAt(p);if(at==DateTime.MinValue)continue;

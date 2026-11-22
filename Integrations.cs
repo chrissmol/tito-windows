@@ -112,7 +112,7 @@ public partial class App {
  }
  static bool uiTest;
  static void StartMediaBridge(){
-  Directory.CreateDirectory(dataDir);WriteHookSettings();if(!uiTest)InstallUserHooks();string modelFile=System.IO.Path.Combine(dataDir,"model.txt");if(File.Exists(modelFile))localModel=File.ReadAllText(modelFile).Trim();else if(!uiTest)AutoPickModel();MotorKillStale();leaveTimer.Tick+=(s,e)=>{leaveTimer.Stop();if(!w.IsMouseOver&&w.IsEnabled&&Mouse.Captured==null&&!dropHover)Expand(false);};
+  Directory.CreateDirectory(dataDir);WriteHookSettings();if(!uiTest)InstallUserHooks();string modelFile=System.IO.Path.Combine(dataDir,"model.txt");if(File.Exists(modelFile))localModel=File.ReadAllText(modelFile).Trim();else if(!uiTest)AutoPickModel();MotorKillStale();leaveTimer.Tick+=(s,e)=>{leaveTimer.Stop();if(!w.IsMouseOver&&w.IsEnabled&&Mouse.Captured==null&&!dropHover&&!pinOpen)Expand(false);};
   try{var info=new ProcessStartInfo("powershell.exe","-NoProfile -NonInteractive -ExecutionPolicy Bypass -File \""+System.IO.Path.Combine(baseDir,"MediaBridge.ps1")+"\" -OwnerPid "+Process.GetCurrentProcess().Id){UseShellExecute=false,CreateNoWindow=true,WindowStyle=ProcessWindowStyle.Hidden};mediaWorker=Process.Start(info);}catch(Exception ex){media.error=ex.Message;}
  }
  static void WriteHookSettings(){

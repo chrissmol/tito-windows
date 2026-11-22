@@ -21,7 +21,7 @@ public partial class App {
   w.PreviewMouseMove+=(s,e)=>lastMascotInteraction=DateTime.UtcNow;w.PreviewKeyDown+=(s,e)=>lastMascotInteraction=DateTime.UtcNow;
   if(!secondary)try{File.Delete(SharedPath());Directory.Delete(Path.Combine(dataDir,"shelf"),true);}catch{}
   if(!secondary)selectedMonitor=Math.Max(0,Array.FindIndex(System.Windows.Forms.Screen.AllScreens,x=>x.Primary));
-  try{string path=Path.Combine(dataDir,"experience.json");if(File.Exists(path)){var prefs=json.Deserialize<Dictionary<string,object>>(File.ReadAllText(path));Func<string,bool,bool> get=(k,d)=>prefs.ContainsKey(k)?Convert.ToBoolean(prefs[k]):d;doNotDisturb=get("quiet",false);saveChat=get("saveChat",true);clipOn=get("clip",true);shareContext=get("context",true);}string source=Path.Combine(dataDir,"media-source.txt");if(File.Exists(source))selectedSource=File.ReadAllText(source).Trim();}catch{}
+  try{string path=Path.Combine(dataDir,"experience.json");if(File.Exists(path)){var prefs=json.Deserialize<Dictionary<string,object>>(File.ReadAllText(path));Func<string,bool,bool> get=(k,d)=>prefs.ContainsKey(k)?Convert.ToBoolean(prefs[k]):d;doNotDisturb=get("quiet",false);saveChat=get("saveChat",true);clipOn=get("clip",true);shareContext=get("context",true);pinOpen=get("pin",false);clickOnly=get("clickOnly",false);}string source=Path.Combine(dataDir,"media-source.txt");if(File.Exists(source))selectedSource=File.ReadAllText(source).Trim();}catch{}
   if(!secondary&&saveChat)LoadChat();
   w.Closed+=(s,e)=>SavePrefs();
   var face=new StackPanel{Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Center,VerticalAlignment=VerticalAlignment.Center};
@@ -58,7 +58,7 @@ public partial class App {
  // Chat history survives restarts (shared.json is reset at startup, so it lives in its own file).
  static string ChatPath(){return Path.Combine(dataDir,"chat.json");}
  static void LoadChat(){try{if(!File.Exists(ChatPath()))return;var list=new List<Dictionary<string,string>>();foreach(var o in (System.Collections.IEnumerable)json.Deserialize<List<object>>(File.ReadAllText(ChatPath()))){var m=(Dictionary<string,object>)o;list.Add(new Dictionary<string,string>{{"role",""+m["role"]},{"content",""+m["content"]}});}conversation=list.Count>100?list.GetRange(list.Count-100,100):list;}catch{}}
- static void SavePrefs(){if(secondary)return;try{File.WriteAllText(Path.Combine(dataDir,"experience.json"),json.Serialize(new{monitor=selectedMonitor,quiet=doNotDisturb,saveChat=saveChat,clip=clipOn,context=shareContext}));}catch{}}
+ static void SavePrefs(){if(secondary)return;try{File.WriteAllText(Path.Combine(dataDir,"experience.json"),json.Serialize(new{monitor=selectedMonitor,quiet=doNotDisturb,saveChat=saveChat,clip=clipOn,context=shareContext,pin=pinOpen,clickOnly=clickOnly}));}catch{}}
  static string SharedPath(){return Path.Combine(dataDir,"shared.json");}
  static string Snap(){return running+"|"+(running?end.Ticks:(long)Math.Round(remaining))+"|"+doNotDisturb+"|"+conversation.Count+"|"+(conversation.Count>0?conversation[conversation.Count-1]["content"].GetHashCode():0);}
  static void SyncTick(){
