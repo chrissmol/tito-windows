@@ -76,11 +76,11 @@ public partial class App {
   string saved="";try{if(File.Exists(NotesPath()))saved=File.ReadAllText(NotesPath());}catch{}
   var bar=Stack(Orientation.Horizontal);bar.Margin=new Thickness(0,0,0,6);int total=NotePages();
   for(int n=1;n<=total;n++){int pg=n;var tab=Btn(NoteTitle(n),()=>GoNotePage(pg),"Página "+n);tab.Padding=new Thickness(8,2,8,2);if(n==notesPage)tab.Background=B("#40FFFFFF");bar.Children.Add(tab);}
-  var more=Btn("+",()=>{int next=NotePages()+1;try{File.WriteAllText(NotesPath(next),"");}catch{}GoNotePage(next);},"Nova página");more.Padding=new Thickness(8,2,8,2);bar.Children.Add(more);var export=Btn("⇩",ExportNotes,"Exportar todas as páginas em .md");export.Padding=new Thickness(8,2,8,2);bar.Children.Add(export);
+  var more=Btn("+",()=>{int next=NotePages()+1;try{File.WriteAllText(NotesPath(next),"");}catch{}GoNotePage(next);},"Nova página");more.Padding=new Thickness(8,2,8,2);bar.Children.Add(more);var export=Btn("⇩",ExportNotes,"Exportar todas as páginas em .md");export.Padding=new Thickness(8,2,8,2);bar.Children.Add(export);var wipe=Btn("🗑",()=>{string old=notesBox.Text;if(old=="")return;notesBox.Text="";FlushNotes();Undoable("Página apagada",()=>{notesPending=old;FlushNotes();});},"Apagar o texto desta página");wipe.Padding=new Thickness(8,2,8,2);bar.Children.Add(wipe);
   var find=new TextBox{Width=110,Background=B("#18FFFFFF"),Foreground=B(Theme.Text),CaretBrush=Brushes.White,BorderThickness=new Thickness(0),Padding=new Thickness(6,3,6,3),FontSize=11,Margin=new Thickness(8,0,0,0),ToolTip="Buscar nas páginas (Enter)"};
   find.KeyDown+=(s2,e2)=>{if(e2.Key!=System.Windows.Input.Key.Enter||find.Text.Trim()=="")return;FlushNotes();int count=NotePages();for(int k=1;k<=count;k++){int n=(notesPage-1+k)%count+1;try{if(File.ReadAllText(NotesPath(n)).IndexOf(find.Text.Trim(),StringComparison.CurrentCultureIgnoreCase)>=0){GoNotePage(n);return;}}catch{}}find.Text="Nada encontrado";};bar.Children.Add(find);notesState=T("",11,Theme.Muted);notesState.Margin=new Thickness(8,0,0,0);bar.Children.Add(notesState);rows.Children.Add(bar);
   notesBox=new TextBox{Text=saved,AcceptsReturn=true,TextWrapping=TextWrapping.Wrap,Background=B("#18FFFFFF"),Foreground=B(Theme.Text),CaretBrush=Brushes.White,BorderThickness=new Thickness(0),Padding=new Thickness(10),FontSize=13,MinHeight=130,VerticalScrollBarVisibility=ScrollBarVisibility.Auto};
-  notesBox.TextChanged+=(s,e)=>{typingUntil=DateTime.UtcNow.AddSeconds(3);notesPending=notesBox.Text;notesState.Text="Salvando…";notesState.Foreground=B(Theme.Muted);if(notesSave==null){notesSave=new System.Windows.Threading.DispatcherTimer{Interval=TimeSpan.FromMilliseconds(600)};notesSave.Tick+=(a,b)=>FlushNotes();w.Closed+=(a,b)=>FlushNotes();}notesSave.Stop();notesSave.Start();};rows.Children.Add(notesBox);
+  notesBox.TextChanged+=(s,e)=>{HideUndo();typingUntil=DateTime.UtcNow.AddSeconds(3);notesPending=notesBox.Text;notesState.Text="Salvando…";notesState.Foreground=B(Theme.Muted);if(notesSave==null){notesSave=new System.Windows.Threading.DispatcherTimer{Interval=TimeSpan.FromMilliseconds(600)};notesSave.Tick+=(a,b)=>FlushNotes();w.Closed+=(a,b)=>FlushNotes();}notesSave.Stop();notesSave.Start();};rows.Children.Add(notesBox);
  }
  // Só os itens fixados vão para o disco (clip-pinned.json); o histórico continua só na memória.
  static List<string> clipPinned;static string clipFilter="";
@@ -115,6 +115,7 @@ public partial class App {
   try{var list=AgendaEntries();int i=list.FindIndex(x=>x[0]==entry[0]&&x[1]==entry[1]&&x[2]==entry[2]);if(i<0)return;if(with==null)list.RemoveAt(i);else list[i]=with;SafeWrite(AgendaPath(),String.Concat(list.Select(x=>String.Join("|",x)+"\n")));agendaError="";}
   catch{agendaError="Não consegui salvar a agenda. Nada foi alterado.";}
  }
+ static void AgendaAdd(string[] entry){try{var list=AgendaEntries();list.Add(entry);SafeWrite(AgendaPath(),String.Concat(list.Select(x=>String.Join("|",x)+"\n")));agendaError="";}catch{agendaError="Não consegui salvar a agenda. Nada foi alterado.";}}
  // "[hoje|amanhã|dd/MM|yyyy-MM-dd] 14:30|9h|9h30 título" -> date yyyy-MM-dd, time HH:mm.
  static bool ParseAgenda(string text,DateTime now,out string date,out string time,out string title){
   date=time=title="";
@@ -173,7 +174,7 @@ public partial class App {
    var t=T(when,12,overdue?Theme.Warn:p[0]==today?"#FFB36B":Theme.Muted);t.Width=84;row.Children.Add(t);var title=T(p[2],13);title.MaxWidth=330;title.TextTrimming=TextTrimming.CharacterEllipsis;row.Children.Add(title);
    var entry=p;
    if(overdue){var later=Btn("+5 min",()=>{var at=DateTime.Now.AddMinutes(5);AgendaReplace(entry,new[]{at.ToString("yyyy-MM-dd",CultureInfo.InvariantCulture),at.ToString("HH:mm",CultureInfo.InvariantCulture),entry[2]});Switch("agenda");},"Adiar 5 minutos");later.Padding=new Thickness(6,2,6,2);row.Children.Add(later);}
-   var done=Btn(overdue?"✓":"✕",()=>{AgendaReplace(entry,null);Switch("agenda");},overdue?"Concluído":"Remover");done.Padding=new Thickness(6,2,6,2);row.Children.Add(done);row.Margin=new Thickness(0,3,0,3);rows.Children.Add(row);}
+   var done=Btn(overdue?"✓":"✕",()=>{AgendaReplace(entry,null);Switch("agenda");if(agendaError=="")Undoable(overdue?"Lembrete concluído":"Lembrete removido",()=>AgendaAdd(entry));},overdue?"Concluído":"Remover");done.Padding=new Thickness(6,2,6,2);row.Children.Add(done);row.Margin=new Thickness(0,3,0,3);rows.Children.Add(row);}
  }
 }
 }

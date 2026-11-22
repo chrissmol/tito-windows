@@ -39,13 +39,13 @@ public partial class App {
  static void Render(){
   var ghost=Ghost();ConfigureArtwork();
   view.Children.Clear();nav.Children.Clear();
-  if(page=="focus")Focus();else if(page=="music")SystemMusic();else if(page=="ia")IAPage();else if(page=="shelf")Shelf();else if(page=="audio")AudioPanel();else if(page=="settings")Settings();else if(page=="notes")Notes();else if(page=="clipboard")ClipboardPage();else if(page=="agenda")Agenda();else Dashboard();
+  if(page=="focus")Focus();else if(page=="music")SystemMusic();else if(page=="ia")IAPage();else if(page=="shelf")Shelf();else if(page=="audio")AudioPanel();else if(page=="settings")Settings();else if(page=="tour")TourPage();else if(page=="notes")Notes();else if(page=="clipboard")ClipboardPage();else if(page=="agenda")Agenda();else Dashboard();
   var links=new[]{new[]{"home","home","INÍCIO"},new[]{"music","music","MÍDIA"},new[]{"focus","focus","FOCO"},new[]{"ia","ia","IA"},new[]{"agenda","agenda","AGENDA"},new[]{"notes","notes","NOTAS"},new[]{"clipboard","clipboard","COLAR"}};
   foreach(var link in links){string target=link[1];var b=Btn("",()=>{if(target=="music"){useSystem=true;player.Pause();playing=false;}GoTo(target);},link[2]);b.Content=NavIcon(link[0],page==target?link[2]:null);if(page==target){b.Background=B("#22FFFFFF");b.Foreground=B("#FFFFFF");activeNav=b;}nav.Children.Add(b);}
 
   PageIn(ghost);
  }
- static string shownPage="";static readonly string[] pageOrder={"home","music","focus","ia","agenda","notes","clipboard","shelf","audio","settings"};
+ static string shownPage="";static readonly string[] pageOrder={"home","music","focus","ia","agenda","notes","clipboard","shelf","audio","settings","tour"};
  static Image lastGhost;
  static Image Ghost(){
   if(page==shownPage||shownPage==""||!SystemParameters.ClientAreaAnimation||!w.IsVisible||view.ActualWidth<2||view.ActualHeight<2)return null;
@@ -115,6 +115,7 @@ public partial class App {
   view=new Grid{Margin=new Thickness(0,7,0,12)};Grid.SetRow(view,1);root.Children.Add(view);
   var footer=new Grid{Height=28};Grid.SetRow(footer,2);root.Children.Add(footer);nav=Stack(Orientation.Horizontal);nav.HorizontalAlignment=HorizontalAlignment.Center;footer.Children.Add(nav);Button add=null;add=Btn("+",()=>QuickMenu(add),"Ações rápidas");add.HorizontalAlignment=HorizontalAlignment.Left;add.Padding=new Thickness(3,2,3,2);footer.Children.Add(add);var settings=Btn("",()=>Switch("settings"),"Settings");settings.Content=NavIcon("settings",null);settings.HorizontalAlignment=HorizontalAlignment.Right;settings.Padding=new Thickness(3,2,3,2);footer.Children.Add(settings);
   w.PreviewKeyDown+=(s,e)=>{if(e.Key==Key.Escape)Expand(false);};SetupExperience();Render();Tick();
+  if(!secondary&&!uiTest&&!File.Exists(TourPath())){var first=new DispatcherTimer{Interval=TimeSpan.FromSeconds(2.5)};first.Tick+=(a,b)=>{first.Stop();TourStart();};first.Start();}
  }
  static void Log(string text){try{File.AppendAllText(System.IO.Path.Combine(dataDir,"lifecycle.log"),text);}catch{}}
  public static void Run(){

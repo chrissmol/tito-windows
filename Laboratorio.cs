@@ -53,6 +53,16 @@ public partial class App {
    flowState=3;flowTo="ana@estudio.com";flowBody="Segue o resumo combinado.";Switch("shelf");Capture("flow-email");
    flowState=4;flowResult="Rascunho aberto no Outlook com o arquivo anexado. É só conferir e enviar.";Switch("shelf");Capture("flow-enviado");
    flowState=0;flowItem=null;shelf.Clear();dropHover=true;Switch("shelf");Capture("flow-soltar");dropHover=false;Switch("shelf");Capture("flow-vazio");
+   // Desfazer: lembrete, página de nota e prateleira voltam; sem desfazer, o aviso some e confirma.
+   File.WriteAllText(AgendaPath(),LabLine(now.AddHours(2),"Dentista")+"\n");var dent=AgendaEntries()[0];AgendaReplace(dent,null);Switch("agenda");Undoable("Lembrete removido",()=>AgendaAdd(dent));
+   Need(AgendaEntries().Count==0&&undoBar!=null,"lembrete removido deveria mostrar o aviso");Capture("desfazer");UndoNow();
+   Need(AgendaEntries().Count==1&&AgendaEntries()[0][2]=="Dentista"&&undoBar==null,"desfazer lembrete");
+   string oldNote=File.ReadAllText(NotesPath(1));File.WriteAllText(NotesPath(1),"");Undoable("Página apagada",()=>{notesPending=oldNote;FlushNotes();});UndoNow();Need(File.ReadAllText(NotesPath(1))==oldNote,"desfazer nota");
+   shelf.Clear();var sd=new DataObject();sd.SetText("Para voltar");ReceiveDrop(sd);var si=shelf[0];shelf.Remove(si);Undoable("Item removido",()=>shelf.Insert(0,si));UndoNow();Need(shelf.Count==1&&shelf[0]==si,"desfazer prateleira");shelf.Clear();
+   bool committed=false;Undoable("x",()=>{},()=>committed=true);HideUndo();Need(committed&&undoBar==null,"aviso sem desfazer deveria confirmar");
+   // Primeiro uso: cada passo desenha, e terminar grava o arquivo (não abre de novo).
+   for(int i=0;i<tourSteps.Length;i++){tourStep=i;Switch("tour");Capture("guia-"+(i+1));}
+   Need(!File.Exists(TourPath()),"guia não deveria marcar como visto antes do fim");TourEnd();Need(File.Exists(TourPath())&&page=="home","terminar o guia");
    // Fotos: agenda (com vencido), notas, área de transferência e cada tema.
    foreach(string p in new[]{"agenda","notes","clipboard"}){Switch(p);Capture(p);}
    foreach(var r in themeData){themeId=r[0];ApplyTheme(true);Switch("home");Capture("theme-"+r[0]);}
