@@ -17,13 +17,13 @@ public partial class App {
  static Button dashPlay,dashStart;static ScrollViewer chatScroll;static StackPanel chatMessages;static TextBox chatInput;static bool chatBusy;
  static List<Dictionary<string,string>> conversation=new List<Dictionary<string,string>>();
  static string localModel="";static TextBlock modelStatus;static ComboBox models;
- static Border Card(string top,string bottom,double width){return new Border{CornerRadius=new CornerRadius(12),Background=new LinearGradientBrush(B(top).Color,B(bottom).Color,90),Width=width,Padding=new Thickness(12),Cursor=Cursors.Hand};}
+ static Border Card(string top,string bottom,double width){return new Border{CornerRadius=new CornerRadius(20),BorderBrush=B("#26FFFFFF"),BorderThickness=new Thickness(1),Background=new LinearGradientBrush(B(top).Color,B(bottom).Color,90),Width=width,Padding=new Thickness(14),Cursor=Cursors.Hand};}
  static void Dashboard(){
   var grid=new Grid();grid.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(110)});grid.ColumnDefinitions.Add(new ColumnDefinition());grid.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(110)});view.Children.Add(grid);
   var agent=Card("#FFFF6B1A","#FFFFA63D",104);agent.HorizontalAlignment=HorizontalAlignment.Left;agent.MouseLeftButtonUp+=(s,e)=>Switch("agent");
   var a=new Grid();agent.Child=a;a.Children.Add(new TextBlock{Text="CLAUDE",FontSize=9,Foreground=B("#E6E0D7"),VerticalAlignment=VerticalAlignment.Top});
   var info=Stack();info.VerticalAlignment=VerticalAlignment.Bottom;dashCount=T("—",29);info.Children.Add(dashCount);dashAgent=T("Sem sessão",9,"#F0D2BE");info.Children.Add(dashAgent);a.Children.Add(info);grid.Children.Add(agent);
-  var music=Card("#FF2BB0FF","#FF2146E0",Double.NaN);music.Margin=new Thickness(4,0,4,0);music.Padding=new Thickness(0);music.ClipToBounds=true;music.SizeChanged+=(s,e)=>music.Clip=new RectangleGeometry(new Rect(0,0,music.ActualWidth,music.ActualHeight),12,12);Grid.SetColumn(music,1);grid.Children.Add(music);
+  var music=Card("#FF2BB0FF","#FF2146E0",Double.NaN);music.Margin=new Thickness(4,0,4,0);music.Padding=new Thickness(0);music.ClipToBounds=true;music.SizeChanged+=(s,e)=>music.Clip=new RectangleGeometry(new Rect(0,0,music.ActualWidth,music.ActualHeight),20,20);Grid.SetColumn(music,1);grid.Children.Add(music);
   var m=new Grid();music.Child=m;var moon=new Ellipse{Width=80,Height=80,Fill=B("#BEE7E4D8"),VerticalAlignment=VerticalAlignment.Top,HorizontalAlignment=HorizontalAlignment.Right,Margin=new Thickness(0,-10,32,0)};m.Children.Add(moon);
   m.Children.Add(new System.Windows.Shapes.Path{Data=Geometry.Parse("M0,90 L65,43 120,80 185,20 270,73 330,43 340,160 0,160 Z"),Fill=B("#70202B50"),Stretch=Stretch.Fill,Height=85,VerticalAlignment=VerticalAlignment.Bottom});
   dashImage=new Image{Stretch=Stretch.UniformToFill};m.Children.Add(dashImage);m.Children.Add(new Border{Background=new LinearGradientBrush(new GradientStopCollection{new GradientStop(Colors.Transparent,0),new GradientStop(Color.FromArgb(215,7,12,24),1)},90)});

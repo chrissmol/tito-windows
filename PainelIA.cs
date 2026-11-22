@@ -122,7 +122,7 @@ public partial class App {
  }
  static Border Tile(string title,UIElement content,int column){
   var stack=Stack();var label=T(title,9.5,Theme.Muted);label.Margin=new Thickness(0,0,0,6);stack.Children.Add(label);stack.Children.Add(content);
-  var tile=new Border{Background=B(Theme.Card),CornerRadius=new CornerRadius(14),Padding=new Thickness(11,9,11,9),Margin=new Thickness(column==0?0:4,0,column==2?0:4,0),Child=stack};Grid.SetColumn(tile,column);return tile;
+  var tile=new Border{Background=B(Theme.Card),BorderBrush=B("#14FFFFFF"),BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(20),Padding=new Thickness(11,9,11,9),Margin=new Thickness(column==0?0:4,0,column==2?0:4,0),Child=stack};Grid.SetColumn(tile,column);return tile;
  }
  static UIElement LimitRow(string label,double pct,double resets=0){
   if(resets>0&&resets<=(DateTime.UtcNow-new DateTime(1970,1,1,0,0,0,DateTimeKind.Utc)).TotalSeconds){pct=0;label+=" · renovou";}

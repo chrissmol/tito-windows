@@ -5,7 +5,7 @@ using System.Windows.Markup;
 namespace Tito {
 // One place for the colors and the font the screens share; change them here.
 static class Theme {
- public const string Text="#F5F3F8",Muted="#B8B3C2",Soft="#B8B3C2",Heading="#E3D9E8",Ok="#78DDB0",Info="#76C9F2",Warn="#F4C47A",Bad="#F28B91",Card="#16FFFFFF",Font="./Fonts/#Inter";
+ public const string Text="#F5F3F8",Muted="#B8B3C2",Soft="#B8B3C2",Heading="#E3D9E8",Ok="#78DDB0",Info="#76C9F2",Warn="#F4C47A",Bad="#F28B91",Card="#14FFFFFF",Font="./Fonts/#Inter";
 }
 public partial class App {
  // Implicit styles so every screen gets thin scrollbars and dark rounded dropdowns instead of Windows defaults.
