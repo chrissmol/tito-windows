@@ -9,7 +9,7 @@ public partial class App {
  // Settings: grouped cards with switches and link rows.
  static Border CardBox(UIElement child){return new Border{Background=B(Theme.Card),BorderBrush=B("#14FFFFFF"),BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(20),Padding=new Thickness(4),Margin=new Thickness(0,0,0,6),Child=child};}
  static Border RowBox(UIElement child,Action click){
-  var row=new Border{Height=26,CornerRadius=new CornerRadius(9),Background=Brushes.Transparent,Cursor=System.Windows.Input.Cursors.Hand,Child=child,Focusable=true,BorderBrush=Brushes.White};
+  var row=new Border{Height=32,CornerRadius=new CornerRadius(12),Background=Brushes.Transparent,Cursor=System.Windows.Input.Cursors.Hand,Child=child,Focusable=true,BorderBrush=Brushes.White};
   var panel=child as Panel;var text=panel!=null&&panel.Children.Count>0?panel.Children[0] as TextBlock:null;if(text!=null)System.Windows.Automation.AutomationProperties.SetName(row,text.Text);
   row.MouseEnter+=(s,e)=>row.Background=B("#14FFFFFF");row.MouseLeave+=(s,e)=>row.Background=Brushes.Transparent;
   row.GotKeyboardFocus+=(s,e)=>row.BorderThickness=new Thickness(1);row.LostKeyboardFocus+=(s,e)=>row.BorderThickness=new Thickness(0); // foco visível no teclado
@@ -19,9 +19,9 @@ public partial class App {
  static UIElement ToggleRow(string label,bool on,Action<bool> set){
   var grid=new Grid();grid.Children.Add(new TextBlock{Text=label,Foreground=B(Theme.Text),FontSize=12,VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(8,0,0,0)});
   var knob=new System.Windows.Shapes.Ellipse{Width=16,Height=16,Fill=Brushes.White,HorizontalAlignment=HorizontalAlignment.Left,Margin=new Thickness(2),RenderTransform=new TranslateTransform(on?14:0,0)};
-  var track=new Border{Width=34,Height=20,CornerRadius=new CornerRadius(10),HorizontalAlignment=HorizontalAlignment.Right,Margin=new Thickness(0,0,6,0),Background=B(on?Theme.Ok:"#4A4A50"),Child=knob};grid.Children.Add(track);
+  var track=new Border{Width=34,Height=20,CornerRadius=new CornerRadius(10),HorizontalAlignment=HorizontalAlignment.Right,Margin=new Thickness(0,0,6,0),Background=B(on?"#30D158":"#4A4A50"),Child=knob};grid.Children.Add(track);
   bool state=on;
-  return RowBox(grid,()=>{state=!state;set(state);track.Background=B(state?Theme.Ok:"#4A4A50");((TranslateTransform)knob.RenderTransform).BeginAnimation(TranslateTransform.XProperty,new DoubleAnimation(state?14:0,TimeSpan.FromMilliseconds(180)){EasingFunction=new CubicEase{EasingMode=EasingMode.EaseOut}});});
+  return RowBox(grid,()=>{state=!state;set(state);track.Background=B(state?"#30D158":"#4A4A50");((TranslateTransform)knob.RenderTransform).BeginAnimation(TranslateTransform.XProperty,new DoubleAnimation(state?14:0,TimeSpan.FromMilliseconds(180)){EasingFunction=new CubicEase{EasingMode=EasingMode.EaseOut}});});
  }
  static UIElement LinkRow(string label,Action go){
   var grid=new Grid();grid.Children.Add(new TextBlock{Text=label,Foreground=B(Theme.Text),FontSize=12,VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(8,0,0,0)});
@@ -33,7 +33,7 @@ public partial class App {
   pill.MouseLeftButtonUp+=(s,e)=>{try{go();}catch(Exception ex){error=ex.Message;ShowError();}};return pill;
  }
  static UIElement SizeCard(){
-  var box=Stack();var title=T("Tamanho do Tito",12,Theme.Heading);title.Margin=new Thickness(8,4,0,4);box.Children.Add(title);
+  var box=Stack();var title=T("Tamanho do Tito",12,Theme.Heading);title.FontWeight=FontWeights.SemiBold;title.Margin=new Thickness(8,6,0,6);box.Children.Add(title);
   var sizes=new[]{0,80,100,125,150,200};var pick=new ComboBox{Height=28,Margin=new Thickness(4,0,4,6)};
   foreach(var p in sizes)pick.Items.Add(new ComboBoxItem{Content=p==0?"Automático (pela tela)":p+"%",Tag=p});pick.SelectedIndex=Math.Max(0,Array.IndexOf(sizes,sizePct));
   pick.SelectionChanged+=(s,e)=>{var it=pick.SelectedItem as ComboBoxItem;if(it!=null)File.WriteAllText(SizeFile(),((int)it.Tag).ToString());};
@@ -41,7 +41,7 @@ public partial class App {
  }
  // Privacidade: o que fica no disco e o que vai para a IA. Detalhes em PRIVACY.md.
  static UIElement PrivacyCard(){
-  var box=Stack();var title=T("Privacidade",12,Theme.Heading);title.Margin=new Thickness(8,4,0,4);box.Children.Add(title);
+  var box=Stack();var title=T("Privacidade",12,Theme.Heading);title.FontWeight=FontWeights.SemiBold;title.Margin=new Thickness(8,6,0,6);box.Children.Add(title);
   box.Children.Add(ToggleRow("Salvar conversas no disco",saveChat,v=>{saveChat=v;if(!v)try{File.Delete(ChatPath());}catch{}SavePrefs();}));
   box.Children.Add(ToggleRow("Histórico da área de transferência",clipOn,v=>{clipOn=v;if(!v)clipItems.Clear();SavePrefs();}));
   box.Children.Add(ToggleRow("Enviar dados do PC à IA",shareContext,v=>{shareContext=v;SavePrefs();}));
@@ -59,7 +59,7 @@ public partial class App {
   left.Children.Add(PrivacyCard());
   var links=Stack();links.Children.Add(LinkRow("Prateleira",()=>Switch("shelf")));links.Children.Add(LinkRow("Áudio",()=>Switch("audio")));links.Children.Add(LinkRow("Conectar Claude",()=>Switch("agent")));left.Children.Add(CardBox(links));left.Children.Add(MonitorsCard());
   var right=Stack();right.Margin=new Thickness(5,0,0,0);Grid.SetColumn(right,1);
-  var robo=Stack();var title=T("Robo · IA local",12,Theme.Heading);title.Margin=new Thickness(8,4,0,4);robo.Children.Add(title);
+  var robo=Stack();var title=T("Robo · IA local",12,Theme.Heading);title.FontWeight=FontWeights.SemiBold;title.Margin=new Thickness(8,6,0,6);robo.Children.Add(title);
   models=new ComboBox{Height=28,Margin=new Thickness(4,0,4,6)};int sel=0;foreach(var m in motorModels){models.Items.Add(new ComboBoxItem{Content="Tito · "+m.Name+" · "+GB(m.Size),Tag="tito:"+m.Id});if(!IsOllama()&&MotorChoice()==m)sel=models.Items.Count-1;}models.SelectedIndex=sel;
   models.SelectionChanged+=(s,e)=>{var it=models.SelectedItem as ComboBoxItem;if(it!=null){localModel=(string)it.Tag;File.WriteAllText(System.IO.Path.Combine(dataDir,"model.txt"),localModel);if(modelStatus!=null)modelStatus.Text=MotorStatusText();}};robo.Children.Add(models);
   robo.Children.Add(PillButton("Preparar IA agora",PrepareMotor));

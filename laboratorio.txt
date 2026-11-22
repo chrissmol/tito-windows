@@ -1,0 +1,4 @@
+LABORATORIO: TUDO OK Â· 2026-11-22 19:37
+OK    Telas, lembretes, notas, foco, temas, olhos - PASS: six panels, timer start/pause, media command, hook config, mascot 128x34, switcher disabled, fullscreen rectangle classification. 2026-11-22T19:37:51.9935291Z
+OK    Abrir, fechar, esconder, voltar - PASS: native tool-window style, expand/collapse, hidden resident loop, restore, interrupted transition. 2026-11-22T19:37:56.3550696Z
+Fotos: Dados\laboratorio-telas.png (telas e temas) e Dados\laboratorio-olhos.png (olhares)

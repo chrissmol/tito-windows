@@ -47,7 +47,7 @@ public partial class App {
  }
  static void SystemMusic(){
   if(!useSystem){LocalMusic();return;}
-  var grid=new Grid();grid.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(196)});grid.ColumnDefinitions.Add(new ColumnDefinition());view.Children.Add(grid);coverImage=new Image{Stretch=Stretch.UniformToFill,Clip=new RectangleGeometry(new Rect(0,0,176,176),20,20)};albumImage=coverImage;coverCard=new Border{Width=176,Height=176,HorizontalAlignment=HorizontalAlignment.Left,VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(2,0,0,0),Child=coverImage,Effect=CoverGlow()};grid.Children.Add(coverCard);
+  var grid=new Grid();grid.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(196)});grid.ColumnDefinitions.Add(new ColumnDefinition());view.Children.Add(grid);coverImage=new Image{Stretch=Stretch.UniformToFill,Clip=new RectangleGeometry(new Rect(0,0,176,176),28,28)};albumImage=coverImage;coverCard=new Border{Width=176,Height=176,HorizontalAlignment=HorizontalAlignment.Left,VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(2,0,0,0),Child=coverImage,Effect=CoverGlow()};grid.Children.Add(coverCard);
   var sources=Btn("Origem ▾",SourceMenu,"Escolher aplicativo de mídia");sources.HorizontalAlignment=HorizontalAlignment.Left;sources.VerticalAlignment=VerticalAlignment.Bottom;sources.Margin=new Thickness(10,0,0,8);sources.Background=B("#A6000000");grid.Children.Add(sources);
   var info=new Grid();Grid.SetColumn(info,1);grid.Children.Add(info);
   mediaArtist=T("",10,"#CFC8C2");mediaArtist.VerticalAlignment=VerticalAlignment.Top;mediaArtist.TextTrimming=TextTrimming.CharacterEllipsis;info.Children.Add(mediaArtist);
@@ -70,7 +70,7 @@ public partial class App {
  static void UpdateSystemMusic(){
   if(page!="music"||!useSystem||mediaArtist==null)return;
 
-  mediaArtist.Text=media.available?(media.playing?"TOCANDO":"PAUSADO")+" · "+(String.IsNullOrWhiteSpace(media.album)?(media.source??""):media.album).ToUpperInvariant():"MÍDIA";mediaArtist.Foreground=glassTint.HasValue?new SolidColorBrush(glassTint.Value):B("#CFC8C2");mediaArtist.FontWeight=FontWeights.SemiBold;coverCard.Opacity=media.playing?1:.6;
+  mediaArtist.Text=media.available?(lyrics.Count>0&&lyricsFor==TrackKey()?media.title+" · "+media.artist:(media.playing?"TOCANDO":"PAUSADO")+" · "+(String.IsNullOrWhiteSpace(media.album)?(media.source??""):media.album).ToUpperInvariant()):"MÍDIA";mediaArtist.Foreground=glassTint.HasValue?new SolidColorBrush(glassTint.Value):B("#CFC8C2");mediaArtist.FontWeight=FontWeights.SemiBold;coverCard.Opacity=media.playing?1:.6;
   mediaHint.Text=media.available?(media.album??media.source??""):media.artist??"Reproduza áudio ou vídeo em um aplicativo ou navegador compatível.";
   mediaHint.ToolTip=media.error;systemPlay.Content=TransportIcon(media.playing?"pause":"play",true);systemPlay.IsEnabled=media.available&&media.canToggle;systemNext.IsEnabled=media.available&&media.canNext;systemPrevious.IsEnabled=media.available&&media.canPrevious;systemSeek.IsEnabled=media.available&&media.canSeek&&media.duration>0;
   double position=MediaPosition();elapsed.Text=Format(position);mediaDuration.Text="−"+Format(media.duration-position);if(!seeking)systemSeek.Value=media.duration>0?Math.Max(0,Math.Min(100,position/media.duration*100)):0;

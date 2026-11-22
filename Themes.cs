@@ -67,7 +67,7 @@ public partial class App {
   themeId="padrao";coverColor=null;ApplyTheme(true);
  }
  static UIElement ThemeCard(){
-  var box=Stack();var title=T("Tema e cores",12,Theme.Heading);title.Margin=new Thickness(8,4,0,4);box.Children.Add(title);
+  var box=Stack();var title=T("Tema e cores",12,Theme.Heading);title.FontWeight=FontWeights.SemiBold;title.Margin=new Thickness(8,6,0,6);box.Children.Add(title);
   var pick=new ComboBox{Height=28,Margin=new Thickness(4,0,4,6)};ThemeRow();
   foreach(var r in themeData){pick.Items.Add(new ComboBoxItem{Content=r[1],Tag=r[0]});if(r[0]==themeId)pick.SelectedIndex=pick.Items.Count-1;}
   pick.SelectionChanged+=(s,e)=>{var it=pick.SelectedItem as ComboBoxItem;if(it==null||(string)it.Tag==themeId)return;themeId=(string)it.Tag;try{File.WriteAllText(ThemeFile(),themeId);}catch{}ApplyTheme(true);};
