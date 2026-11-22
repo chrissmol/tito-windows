@@ -52,7 +52,7 @@ public partial class App {
  static string AgendaPath(){return Path.Combine(dataDir,"agenda.txt");}
  [System.Runtime.InteropServices.DllImport("user32.dll")] static extern uint GetClipboardSequenceNumber();static uint clipSeq;
  static void ClipboardTick(){
-  uint seq=GetClipboardSequenceNumber();if(seq==clipSeq)return;clipSeq=seq;
+  uint seq=GetClipboardSequenceNumber();if(seq==clipSeq)return;clipSeq=seq;if(!clipOn)return;
   try{
    if(!Clipboard.ContainsText()||Clipboard.ContainsData("ExcludeClipboardContentFromMonitorProcessing"))return;
    string text=Clipboard.GetText();if(String.IsNullOrWhiteSpace(text)||text==lastClip||text.Length>2000)return;
@@ -64,9 +64,9 @@ public partial class App {
   var header=new DockPanel{Margin=new Thickness(0,0,0,6)};if(action!=null){DockPanel.SetDock(action,Dock.Right);header.Children.Add(action);}var heading=T(title,19,PageHex(page));heading.FontWeight=FontWeights.SemiBold;header.Children.Add(heading);root.Children.Add(header);
   scroll=new ScrollViewer{VerticalScrollBarVisibility=ScrollBarVisibility.Auto};Grid.SetRow(scroll,1);root.Children.Add(scroll);var rows=Stack();scroll.Content=rows;return rows;
  }
- static string notesPending;static System.Windows.Threading.DispatcherTimer notesSave;
+ static string notesPending;static System.Windows.Threading.DispatcherTimer notesSave;static TextBlock notesState;
  // Grava a nota 600 ms depois da última tecla (e ao sair da aba/fechar), não a cada tecla.
- static void FlushNotes(){if(notesSave!=null)notesSave.Stop();if(notesPending==null)return;try{File.WriteAllText(NotesPath(),notesPending);notesPending=null;}catch{}}
+ static void FlushNotes(){if(notesSave!=null)notesSave.Stop();if(notesPending==null)return;bool ok=true;try{SafeWrite(NotesPath(),notesPending);notesPending=null;}catch{ok=false;}if(notesState!=null){notesState.Text=ok?"Salvo":"Não foi possível salvar · o texto continua aqui";notesState.Foreground=B(ok?Theme.Muted:Theme.Bad);}}
  static void Notes(){
   FlushNotes();ScrollViewer sc;var rows=Panel("Notas",out sc);
   string saved="";try{if(File.Exists(NotesPath()))saved=File.ReadAllText(NotesPath());}catch{}
@@ -74,15 +74,15 @@ public partial class App {
   for(int n=1;n<=total;n++){int pg=n;var tab=Btn(n.ToString(),()=>GoNotePage(pg),"Página "+n);tab.Padding=new Thickness(8,2,8,2);if(n==notesPage)tab.Background=B("#40FFFFFF");bar.Children.Add(tab);}
   var more=Btn("+",()=>{int next=NotePages()+1;try{File.WriteAllText(NotesPath(next),"");}catch{}GoNotePage(next);},"Nova página");more.Padding=new Thickness(8,2,8,2);bar.Children.Add(more);
   var find=new TextBox{Width=110,Background=B("#18FFFFFF"),Foreground=B(Theme.Text),CaretBrush=Brushes.White,BorderThickness=new Thickness(0),Padding=new Thickness(6,3,6,3),FontSize=11,Margin=new Thickness(8,0,0,0),ToolTip="Buscar nas páginas (Enter)"};
-  find.KeyDown+=(s2,e2)=>{if(e2.Key!=System.Windows.Input.Key.Enter||find.Text.Trim()=="")return;FlushNotes();int count=NotePages();for(int k=1;k<=count;k++){int n=(notesPage-1+k)%count+1;try{if(File.ReadAllText(NotesPath(n)).IndexOf(find.Text.Trim(),StringComparison.CurrentCultureIgnoreCase)>=0){GoNotePage(n);return;}}catch{}}find.Text="Nada encontrado";};bar.Children.Add(find);rows.Children.Add(bar);
+  find.KeyDown+=(s2,e2)=>{if(e2.Key!=System.Windows.Input.Key.Enter||find.Text.Trim()=="")return;FlushNotes();int count=NotePages();for(int k=1;k<=count;k++){int n=(notesPage-1+k)%count+1;try{if(File.ReadAllText(NotesPath(n)).IndexOf(find.Text.Trim(),StringComparison.CurrentCultureIgnoreCase)>=0){GoNotePage(n);return;}}catch{}}find.Text="Nada encontrado";};bar.Children.Add(find);notesState=T("",11,Theme.Muted);notesState.Margin=new Thickness(8,0,0,0);bar.Children.Add(notesState);rows.Children.Add(bar);
   notesBox=new TextBox{Text=saved,AcceptsReturn=true,TextWrapping=TextWrapping.Wrap,Background=B("#18FFFFFF"),Foreground=B(Theme.Text),CaretBrush=Brushes.White,BorderThickness=new Thickness(0),Padding=new Thickness(10),FontSize=13,MinHeight=130,VerticalScrollBarVisibility=ScrollBarVisibility.Auto};
-  notesBox.TextChanged+=(s,e)=>{typingUntil=DateTime.UtcNow.AddSeconds(3);notesPending=notesBox.Text;if(notesSave==null){notesSave=new System.Windows.Threading.DispatcherTimer{Interval=TimeSpan.FromMilliseconds(600)};notesSave.Tick+=(a,b)=>FlushNotes();w.Closed+=(a,b)=>FlushNotes();}notesSave.Stop();notesSave.Start();};rows.Children.Add(notesBox);
+  notesBox.TextChanged+=(s,e)=>{typingUntil=DateTime.UtcNow.AddSeconds(3);notesPending=notesBox.Text;notesState.Text="Salvando…";notesState.Foreground=B(Theme.Muted);if(notesSave==null){notesSave=new System.Windows.Threading.DispatcherTimer{Interval=TimeSpan.FromMilliseconds(600)};notesSave.Tick+=(a,b)=>FlushNotes();w.Closed+=(a,b)=>FlushNotes();}notesSave.Stop();notesSave.Start();};rows.Children.Add(notesBox);
  }
  // Só os itens fixados vão para o disco (clip-pinned.json); o histórico continua só na memória.
  static List<string> clipPinned;static string clipFilter="";
  static string PinPath(){return Path.Combine(dataDir,"clip-pinned.json");}
  static List<string> Pins(){if(clipPinned==null){clipPinned=new List<string>();try{if(File.Exists(PinPath()))clipPinned=json.Deserialize<List<string>>(File.ReadAllText(PinPath()));}catch{}}return clipPinned;}
- static void SavePins(){try{File.WriteAllText(PinPath(),json.Serialize(Pins()));}catch{}}
+ static void SavePins(){try{SafeWrite(PinPath(),json.Serialize(Pins()));}catch{error="Não consegui salvar os fixados no disco. Eles continuam até fechar o Tito.";ShowError();}}
  static void ClipboardPage(){
   ScrollViewer sc;var rows=Panel("Área de transferência",out sc,Btn("Limpar",()=>{clipItems.Clear();Switch("clipboard");},"Limpa o histórico; os fixados ficam"));
   var search=new TextBox{Text=clipFilter,Background=B("#18FFFFFF"),Foreground=B(Theme.Text),CaretBrush=Brushes.White,BorderThickness=new Thickness(0),Padding=new Thickness(8,5,8,5),FontSize=12,ToolTip="Digite e aperte Enter para filtrar",Margin=new Thickness(0,0,0,6)};
@@ -99,7 +99,18 @@ public partial class App {
   var list=new List<string[]>();try{if(File.Exists(AgendaPath()))foreach(string line in File.ReadAllLines(AgendaPath())){var p=line.Split(new[]{'|'},3);if(p.Length==3)list.Add(p);}}catch{}
   return list.OrderBy(p=>p[0]+p[1]).ToList();
  }
- static string agendaError="";static DateTime lastAgendaCheck;static readonly HashSet<string> agendaFired=new HashSet<string>();
+ static string agendaError="";static DateTime lastAgendaCheck;static HashSet<string> agendaFired;
+ // Lembretes já avisados ficam no disco (agenda-avisados.txt): o que vencer com o Tito fechado, o PC suspenso, em jogo ou no não incomodar aparece depois (até 24 h).
+ static string FiredPath(){return Path.Combine(dataDir,"agenda-avisados.txt");}
+ static HashSet<string> Fired(){if(agendaFired==null){agendaFired=new HashSet<string>();try{if(File.Exists(FiredPath()))foreach(string l in File.ReadAllLines(FiredPath()))agendaFired.Add(l);}catch{}}return agendaFired;}
+ static DateTime AgendaAt(string[] p){DateTime at;return DateTime.TryParseExact(p[0]+" "+p[1],"yyyy-MM-dd HH:mm",CultureInfo.InvariantCulture,DateTimeStyles.None,out at)?at:DateTime.MinValue;}
+ // Grava num .tmp e troca, para nunca deixar o arquivo pela metade.
+ static void SafeWrite(string path,string text){string tmp=path+".tmp";File.WriteAllText(tmp,text);if(File.Exists(path))File.Replace(tmp,path,null);else File.Move(tmp,path);}
+ // Troca (ou apaga, com null) só a primeira entrada igual; entradas repetidas continuam.
+ static void AgendaReplace(string[] entry,string[] with){
+  try{var list=AgendaEntries();int i=list.FindIndex(x=>x[0]==entry[0]&&x[1]==entry[1]&&x[2]==entry[2]);if(i<0)return;if(with==null)list.RemoveAt(i);else list[i]=with;SafeWrite(AgendaPath(),String.Concat(list.Select(x=>String.Join("|",x)+"\n")));agendaError="";}
+  catch{agendaError="Não consegui salvar a agenda. Nada foi alterado.";}
+ }
  // "[hoje|amanhã|dd/MM|yyyy-MM-dd] 14:30|9h|9h30 título" -> date yyyy-MM-dd, time HH:mm.
  static bool ParseAgenda(string text,DateTime now,out string date,out string time,out string title){
   date=time=title="";
@@ -112,7 +123,6 @@ public partial class App {
   else if(ds.Contains("/")){var p=ds.Split('/');int dd=int.Parse(p[0]),mo=int.Parse(p[1]);try{d=new DateTime(now.Year,mo,dd);if(d<now.Date)d=d.AddYears(1);}catch{return false;}}
   date=d.ToString("yyyy-MM-dd",CultureInfo.InvariantCulture);time=h.ToString("00")+":"+min.ToString("00");title=m.Groups["t"].Value;return true;
  }
- // Called from the 250 ms ticker: fires once per entry, only within 2 min after its time (so old entries don't ring when Tito opens).
  // Focus time done today ("yyyy-MM-dd|seconds" in focus.txt). Only the main island counts, so several screens do not add the same minutes twice.
  static double focusToday;static string focusDay="";static DateTime focusLast=DateTime.MinValue;static int focusSavedMin;static TextBlock focusLabel;
  static string FocusPath(){return Path.Combine(dataDir,"focus.txt");}
@@ -125,19 +135,23 @@ public partial class App {
  static void FocusTick(){
   if(secondary)return;
   if(focusDay!=DateTime.Now.ToString("yyyy-MM-dd"))FocusLoad();
-  var now=DateTime.UtcNow;if(running&&focusLast!=DateTime.MinValue)focusToday+=Math.Min(2,(now-focusLast).TotalSeconds);
+  var now=DateTime.UtcNow;if(running&&!onBreak&&focusLast!=DateTime.MinValue)focusToday+=Math.Min(2,(now-focusLast).TotalSeconds);
   bool stopped=!running&&focusLast!=DateTime.MinValue;focusLast=running?now:DateTime.MinValue;
   int min=(int)(focusToday/60);
   if(min!=focusSavedMin||stopped){focusSavedMin=min;try{File.WriteAllText(FocusPath(),focusDay+"|"+focusToday.ToString("F0",CultureInfo.InvariantCulture));}catch{}if(focusLabel!=null&&page=="focus")focusLabel.Text=FocusTodayText();}
  }
  static void AgendaReminderTick(){
-  DateTime now=DateTime.Now;if(now-lastAgendaCheck<TimeSpan.FromSeconds(1))return;lastAgendaCheck=now;bool soon=false;
-  foreach(var p in AgendaEntries()){DateTime at;if(!DateTime.TryParseExact(p[0]+" "+p[1],"yyyy-MM-dd HH:mm",CultureInfo.InvariantCulture,DateTimeStyles.None,out at))continue;
+  DateTime now=DateTime.Now;if(now-lastAgendaCheck<TimeSpan.FromSeconds(1))return;lastAgendaCheck=now;bool soon=false;var due=new List<string[]>();var all=AgendaEntries();
+  foreach(var p in all){DateTime at=AgendaAt(p);if(at==DateTime.MinValue)continue;
    if(at>now&&at-now<=TimeSpan.FromMinutes(10))soon=true;
-   if(now<at||now-at>TimeSpan.FromMinutes(2)||!agendaFired.Add(p[0]+"|"+p[1]+"|"+p[2]))continue;
-   excitedUntil=DateTime.UtcNow.AddSeconds(6);if(contextHidden||doNotDisturb)continue;
-   System.Media.SystemSounds.Asterisk.Play();if(tray!=null)tray.ShowBalloonTip(5000,"Tito · "+p[1],p[2],Forms.ToolTipIcon.Info);Switch("agenda");Expand(true);}
+   if(at<=now&&now-at<=TimeSpan.FromHours(24)&&!Fired().Contains(String.Join("|",p)))due.Add(p);}
   agendaSoon=soon;
+  if(due.Count==0||secondary||contextHidden||doNotDisturb)return; // continua pendente e aparece quando der
+  foreach(var p in due)Fired().Add(String.Join("|",p));
+  try{File.WriteAllLines(FiredPath(),all.Select(p=>String.Join("|",p)).Where(k=>Fired().Contains(k)).Distinct().ToArray());}catch{}
+  excitedUntil=DateTime.UtcNow.AddSeconds(6);System.Media.SystemSounds.Asterisk.Play();
+  if(tray!=null){if(due.Count==1)tray.ShowBalloonTip(5000,"Tito · "+due[0][1],due[0][2],Forms.ToolTipIcon.Info);else tray.ShowBalloonTip(5000,"Tito · "+due.Count+" lembretes",String.Join("\n",due.Select(p=>p[1]+" "+p[2])),Forms.ToolTipIcon.Info);}
+  Switch("agenda");Expand(true);
  }
  static void Agenda(){
   ScrollViewer sc;var rows=Panel("Agenda",out sc);
@@ -147,11 +161,13 @@ public partial class App {
    agendaError="";try{File.AppendAllText(AgendaPath(),date+"|"+time+"|"+title.Replace("|"," ")+"\n");}catch{agendaError="Não consegui salvar a agenda.";}celebrateUntil=DateTime.UtcNow.AddSeconds(2);Switch("agenda");};
   rows.Children.Add(add);
   if(agendaError!="")rows.Children.Add(T(agendaError,12,"#FF453A"));
-  string today=DateTime.Now.ToString("yyyy-MM-dd");var upcoming=AgendaEntries().Where(p=>String.CompareOrdinal(p[0],today)>=0).Take(12).ToList();
-  if(upcoming.Count==0)rows.Children.Add(T("Nada marcado. Digite “14:30 Reunião” e Enter.",13,"#BDBDC5"));
-  foreach(var p in upcoming){var row=Stack(Orientation.Horizontal);string when=p[0]==today?p[1]:DateTime.ParseExact(p[0],"yyyy-MM-dd",CultureInfo.InvariantCulture).ToString("dd/MM",CultureInfo.InvariantCulture)+" "+p[1];
-   var t=T(when,12,p[0]==today?"#FFB36B":Theme.Muted);t.Width=84;row.Children.Add(t);row.Children.Add(T(p[2],13));
-   var entry=p;var done=Btn("✕",()=>{try{File.WriteAllLines(AgendaPath(),AgendaEntries().Where(x=>!(x[0]==entry[0]&&x[1]==entry[1]&&x[2]==entry[2])).Select(x=>String.Join("|",x)).ToArray());}catch{}Switch("agenda");},"Remover");done.Padding=new Thickness(6,2,6,2);row.Children.Add(done);row.Margin=new Thickness(0,3,0,3);rows.Children.Add(row);}
+  DateTime now=DateTime.Now;string today=now.ToString("yyyy-MM-dd");var upcoming=AgendaEntries().Where(p=>{var at=AgendaAt(p);return at!=DateTime.MinValue&&now-at<=TimeSpan.FromHours(24);}).Take(12).ToList();
+  if(upcoming.Count==0)rows.Children.Add(T("Nada marcado. Crie um lembrete para não esquecer: digite “amanhã 9h Dentista” e Enter.",13,"#BDBDC5"));
+  foreach(var p in upcoming){var row=Stack(Orientation.Horizontal);bool overdue=AgendaAt(p)<=now;string when=p[0]==today?p[1]:DateTime.ParseExact(p[0],"yyyy-MM-dd",CultureInfo.InvariantCulture).ToString("dd/MM",CultureInfo.InvariantCulture)+" "+p[1];
+   var t=T(when,12,overdue?Theme.Warn:p[0]==today?"#FFB36B":Theme.Muted);t.Width=84;row.Children.Add(t);var title=T(p[2],13);title.MaxWidth=330;title.TextTrimming=TextTrimming.CharacterEllipsis;row.Children.Add(title);
+   var entry=p;
+   if(overdue){var later=Btn("+5 min",()=>{var at=DateTime.Now.AddMinutes(5);AgendaReplace(entry,new[]{at.ToString("yyyy-MM-dd",CultureInfo.InvariantCulture),at.ToString("HH:mm",CultureInfo.InvariantCulture),entry[2]});Switch("agenda");},"Adiar 5 minutos");later.Padding=new Thickness(6,2,6,2);row.Children.Add(later);}
+   var done=Btn(overdue?"✓":"✕",()=>{AgendaReplace(entry,null);Switch("agenda");},overdue?"Concluído":"Remover");done.Padding=new Thickness(6,2,6,2);row.Children.Add(done);row.Margin=new Thickness(0,3,0,3);rows.Children.Add(row);}
  }
 }
 }

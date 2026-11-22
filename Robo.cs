@@ -60,7 +60,7 @@ public partial class App {
    case "focusstop":CmdPauseFocus();return "Foco pausado.";
    case "note":AddNote(arg);CmdDone();return "Anotado.";
    case "agenda":{string d,h,title;if(!ParseAgenda(arg,DateTime.Now,out d,out h,out title))return "Não entendi o horário. Diga assim: me lembra amanhã 9h Dentista.";AddAgenda(d,h,title);CmdDone();return "Agendado: "+d.Substring(8,2)+"/"+d.Substring(5,2)+" às "+h+" — "+title+".";}
-   case "play":SendMedia("toggle");return "Pronto, play/pause enviado à mídia.";
+   case "play":if(!media.available)return "Nenhum player de mídia conectado ao Windows agora.";SendMedia("toggle");return "Comando de play/pause enviado a "+(String.IsNullOrEmpty(media.source)?"mídia":media.source)+".";
    case "next":SendMedia("next");return "Próxima faixa.";
    case "prev":SendMedia("previous");return "Faixa anterior.";
    case "vol":{int v=Math.Max(0,Math.Min(100,Int32.Parse(arg)));DesktopAudio.Volume(v/100f);return "Volume em "+v+"%.";}
