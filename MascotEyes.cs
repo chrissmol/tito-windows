@@ -52,7 +52,7 @@ public sealed class MascotEyes : FrameworkElement {
  public string Mood {get{return mood;}set{if(mood==value)return;from=Current();to=Pose(value);mood=value;BeginAnimation(BlendProperty,null);Blend=0;if(SystemParameters.ClientAreaAnimation)BeginAnimation(BlendProperty,new DoubleAnimation(1,TimeSpan.FromMilliseconds(230)){EasingFunction=new CubicEase{EasingMode=EasingMode.EaseOut}});else Blend=1;
    BeginAnimation(PhaseProperty,null);Phase=0;
    if(SystemParameters.ClientAreaAnimation){
-    if(value=="thinking"||value=="sleepy"||value=="dizzy"||value=="excited"){var steps=new DoubleAnimationUsingKeyFrames{Duration=TimeSpan.FromMilliseconds(1200),RepeatBehavior=RepeatBehavior.Forever};for(int i=0;i<8;i++)steps.KeyFrames.Add(new DiscreteDoubleKeyFrame(i,KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(i*150))));BeginAnimation(PhaseProperty,steps);}
+    if(value=="thinking"||value=="dizzy"||value=="excited"){var steps=new DoubleAnimationUsingKeyFrames{Duration=TimeSpan.FromMilliseconds(1200),RepeatBehavior=RepeatBehavior.Forever};for(int i=0;i<8;i++)steps.KeyFrames.Add(new DiscreteDoubleKeyFrame(i,KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(i*150))));BeginAnimation(PhaseProperty,steps);}
     if(value=="happy"||value=="love"||value=="surprised")Hop(1);else if(value=="excited")Hop(2);else if(value=="curious"||value=="dizzy")Wiggle();
    }}}
  public void Hop(int times){
@@ -80,14 +80,13 @@ public sealed class MascotEyes : FrameworkElement {
   base.OnRender(dc);dc.DrawRectangle(Brushes.Transparent,null,new Rect(0,0,ActualWidth,ActualHeight));
   Face f=Current();double lift=Lift;double x=ActualWidth/2+GazeX+f.LookX,y=ActualHeight/2+GazeY+f.LookY-5*lift;
   var brush=new SolidColorBrush(Color.FromRgb((byte)f.R,(byte)f.G,(byte)f.B));
-  double morph=MediaBlend;dc.PushOpacity(1-morph);
-  Eye(dc,brush,x-7,y,f.Left,f,f.SmileL,-1,lift);Eye(dc,brush,x+7,y,f.Right,f,f.SmileR,1,lift);
-  if(mood=="thinking"){dc.PushOpacity(Blend);int dots=((int)(Phase/2))%4;for(int i=0;i<dots;i++)dc.DrawEllipse(brush,null,new Point(ActualWidth/2+9+i*3.5,ActualHeight/2-9),1.2,1.2);dc.Pop();}
-  if(mood=="sleepy"){dc.PushOpacity(Blend*.85);var pen=new Pen(brush,1.1){StartLineCap=PenLineCap.Round,EndLineCap=PenLineCap.Round,LineJoin=PenLineJoin.Round};int p=(int)Phase;if(p<6)Zed(dc,pen,ActualWidth/2+9,ActualHeight/2-4,3);if(p>=2)Zed(dc,pen,ActualWidth/2+13,ActualHeight/2-9,4);dc.Pop();}
-  dc.Pop();
-  if(morph>0){dc.PushOpacity(morph);var wave=new SolidColorBrush(WaveColor);double wy=ActualHeight/2+GazeY;for(int i=0;i<7;i++){double level=Mix(waveFrom[i],waveTo[i],WaveStep);double h=2+(SystemParameters.ClientAreaAnimation?Math.Sqrt(Math.Max(0,level))*16:0);double bx=ActualWidth/2+(i-3)*4.5;dc.DrawRoundedRectangle(wave,null,new Rect(bx-1.25,wy-h/2,2.5,h),1.25,1.25);}dc.Pop();}
+  // Música: os dois olhos pulsam com o áudio e puxam a cor da mídia; nada além dos olhos é desenhado.
+  double morph=MediaBlend,pulse=0;
+  if(morph>0){double level=0;for(int i=0;i<7;i++)level+=Mix(waveFrom[i],waveTo[i],WaveStep);level/=7;pulse=morph*(SystemParameters.ClientAreaAnimation?Math.Sqrt(Math.Max(0,level))*.6:0);
+   var wc=WaveColor;brush=new SolidColorBrush(Color.FromRgb((byte)Mix(f.R,wc.R,morph),(byte)Mix(f.G,wc.G,morph),(byte)Mix(f.B,wc.B,morph)));}
+  if(mood=="thinking")x+=Blend*2.5*Math.Sin(Phase*Math.PI/4); // pensando: olhar vai de um lado para o outro
+  Eye(dc,brush,x-7,y,f.Left*(1+pulse),f,f.SmileL,-1,lift);Eye(dc,brush,x+7,y,f.Right*(1+pulse),f,f.SmileR,1,lift);
  }
- static void Zed(DrawingContext dc,Pen pen,double x,double y,double s){var g=new StreamGeometry();using(var c=g.Open()){c.BeginFigure(new Point(x,y),false,false);c.LineTo(new Point(x+s,y),true,true);c.LineTo(new Point(x,y+s),true,true);c.LineTo(new Point(x+s,y+s),true,true);}dc.DrawGeometry(null,pen,g);}
  void Eye(DrawingContext dc,Brush brush,double x,double y,double height,Face f,double smile,int side,double lift){
   double plain=(1-smile)*(1-f.Heart)*(1-f.Spiral);
   if(plain>.001){

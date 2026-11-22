@@ -9,9 +9,12 @@ public partial class App {
  // Settings: grouped cards with switches and link rows.
  static Border CardBox(UIElement child){return new Border{Background=B(Theme.Card),CornerRadius=new CornerRadius(14),Padding=new Thickness(4),Margin=new Thickness(0,0,0,6),Child=child};}
  static Border RowBox(UIElement child,Action click){
-  var row=new Border{Height=26,CornerRadius=new CornerRadius(9),Background=Brushes.Transparent,Cursor=System.Windows.Input.Cursors.Hand,Child=child};
+  var row=new Border{Height=26,CornerRadius=new CornerRadius(9),Background=Brushes.Transparent,Cursor=System.Windows.Input.Cursors.Hand,Child=child,Focusable=true,BorderBrush=Brushes.White};
+  var panel=child as Panel;var text=panel!=null&&panel.Children.Count>0?panel.Children[0] as TextBlock:null;if(text!=null)System.Windows.Automation.AutomationProperties.SetName(row,text.Text);
   row.MouseEnter+=(s,e)=>row.Background=B("#14FFFFFF");row.MouseLeave+=(s,e)=>row.Background=Brushes.Transparent;
-  row.MouseLeftButtonUp+=(s,e)=>{try{click();}catch(Exception ex){error=ex.Message;ShowError();}};return row;
+  row.GotKeyboardFocus+=(s,e)=>row.BorderThickness=new Thickness(1);row.LostKeyboardFocus+=(s,e)=>row.BorderThickness=new Thickness(0); // foco visível no teclado
+  Action run=()=>{try{click();}catch(Exception ex){error=ex.Message;ShowError();}};
+  row.MouseLeftButtonUp+=(s,e)=>run();row.KeyDown+=(s,e)=>{if(e.Key==System.Windows.Input.Key.Enter||e.Key==System.Windows.Input.Key.Space){run();e.Handled=true;}};return row;
  }
  static UIElement ToggleRow(string label,bool on,Action<bool> set){
   var grid=new Grid();grid.Children.Add(new TextBlock{Text=label,Foreground=B(Theme.Text),FontSize=12,VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(8,0,0,0)});
@@ -36,11 +39,23 @@ public partial class App {
   pick.SelectionChanged+=(s,e)=>{var it=pick.SelectedItem as ComboBoxItem;if(it!=null)File.WriteAllText(SizeFile(),((int)it.Tag).ToString());};
   box.Children.Add(pick);return CardBox(box);
  }
+ // Privacidade: o que fica no disco e o que vai para a IA. Detalhes em PRIVACY.md.
+ static UIElement PrivacyCard(){
+  var box=Stack();var title=T("Privacidade",12,Theme.Heading);title.Margin=new Thickness(8,4,0,4);box.Children.Add(title);
+  box.Children.Add(ToggleRow("Salvar conversas no disco",saveChat,v=>{saveChat=v;if(!v)try{File.Delete(ChatPath());}catch{}SavePrefs();}));
+  box.Children.Add(ToggleRow("Histórico da área de transferência",clipOn,v=>{clipOn=v;if(!v)clipItems.Clear();SavePrefs();}));
+  box.Children.Add(ToggleRow("Enviar dados do PC à IA",shareContext,v=>{shareContext=v;SavePrefs();}));
+  box.Children.Add(LinkRow("Apagar conversas",()=>{conversation.Clear();try{File.Delete(ChatPath());}catch{}celebrateUntil=DateTime.UtcNow.AddSeconds(1.5);}));
+  box.Children.Add(LinkRow("Abrir pasta de dados",()=>System.Diagnostics.Process.Start("explorer.exe","\""+dataDir+"\"")));
+  var note=T("Dados do PC: bateria, volume, app em foco, mídia e agenda de hoje. Data, hora e timer vão sempre. A IA embutida roda neste PC; um servidor externo em 127.0.0.1 pode repassar para a nuvem.",10.5,Theme.Soft);note.TextWrapping=TextWrapping.Wrap;note.Margin=new Thickness(8,4,8,4);box.Children.Add(note);
+  return CardBox(box);
+ }
  static void Settings(){
   var grid=new Grid{Margin=new Thickness(0,0,0,-8)};grid.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(1,GridUnitType.Star)});grid.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(1,GridUnitType.Star)});
   var scroll=new ScrollViewer{Content=grid,VerticalScrollBarVisibility=ScrollBarVisibility.Auto};view.Children.Add(scroll);
   var left=Stack();left.Margin=new Thickness(0,0,5,0);
   var switches=Stack();switches.Children.Add(ToggleRow("Não incomodar",doNotDisturb,v=>doNotDisturb=v));switches.Children.Add(ToggleRow("Iniciar com o Windows",AutostartOn(),SetAutostart));switches.Children.Add(ToggleRow("Manter acordado",keepAwake,SetKeepAwake));left.Children.Add(CardBox(switches));
+  left.Children.Add(PrivacyCard());
   var links=Stack();links.Children.Add(LinkRow("Prateleira",()=>Switch("shelf")));links.Children.Add(LinkRow("Áudio",()=>Switch("audio")));links.Children.Add(LinkRow("Conectar Claude",()=>Switch("agent")));left.Children.Add(CardBox(links));left.Children.Add(MonitorsCard());
   var right=Stack();right.Margin=new Thickness(5,0,0,0);Grid.SetColumn(right,1);
   var robo=Stack();var title=T("Robo · IA local",12,Theme.Heading);title.Margin=new Thickness(8,4,0,4);robo.Children.Add(title);

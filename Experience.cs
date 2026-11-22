@@ -10,7 +10,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Interop;
 namespace Tito {
 public partial class App {
- static bool doNotDisturb,dropHover,compactWide;static double compactWidth=176;static string pillKey="";static int selectedMonitor;static TextBlock compactStatus;static bool focusWasRunning;static DateTime celebrateUntil;
+ static bool doNotDisturb,dropHover,compactWide,saveChat=true,clipOn=true,shareContext=true;static double compactWidth=176;static string pillKey="";static int selectedMonitor;static TextBlock compactStatus;static bool focusWasRunning;static DateTime celebrateUntil;
  static MascotEyes headerMascot;static DateTime lastMascotInteraction=DateTime.UtcNow,gazeUntil,surprisedUntil;static Point lastGaze;static bool mediaWasPlaying;
  static DesktopAudio.PeakMonitor outputMeter;static System.Windows.Threading.DispatcherTimer waveTimer;static bool waveWasActive;
  sealed class ShelfItem {public string Name,Text,Folder;public string[] Files;public BitmapSource Image;public DateTime Added=DateTime.UtcNow;}
@@ -20,10 +20,10 @@ public partial class App {
   if(!uiTest){outputMeter=new DesktopAudio.PeakMonitor();waveTimer=new System.Windows.Threading.DispatcherTimer{Interval=TimeSpan.FromMilliseconds(50)};waveTimer.Tick+=(s,e)=>{bool active=!contextHidden&&(page=="music"||(!opened&&media.playing));outputMeter.Enabled=active;bool visible=page=="music"||(!opened&&media.playing);mascot.MediaMode=visible;mascot.ToolTip=visible?(outputMeter.Available?"Nível real da saída padrão · mistura de todos os aplicativos":"Medição de áudio indisponível · "+outputMeter.Error):"Tito";if(headerMascot!=null)headerMascot.MediaMode=page=="music";Color waves=glassTint.HasValue?glassTint.Value:Color.FromRgb(83,190,255);mascot.WaveColor=waves;if(headerMascot!=null)headerMascot.WaveColor=waves;double peak=active&&outputMeter.Available?outputMeter.Level:0;bool busy=active||waveWasActive||mascot.MediaBlend>.001||(headerMascot!=null&&headerMascot.MediaBlend>.001);if(busy){mascot.AudioPeak(peak);if(headerMascot!=null)headerMascot.AudioPeak(peak);}waveWasActive=active;waveTimer.Interval=TimeSpan.FromMilliseconds(busy?50:250);};waveTimer.Start();w.Closed+=(s,e)=>{waveTimer.Stop();outputMeter.Dispose();};}
   w.PreviewMouseMove+=(s,e)=>lastMascotInteraction=DateTime.UtcNow;w.PreviewKeyDown+=(s,e)=>lastMascotInteraction=DateTime.UtcNow;
   if(!secondary)try{File.Delete(SharedPath());Directory.Delete(Path.Combine(dataDir,"shelf"),true);}catch{}
-  if(!secondary)LoadChat();
   if(!secondary)selectedMonitor=Math.Max(0,Array.FindIndex(System.Windows.Forms.Screen.AllScreens,x=>x.Primary));
-  try{string path=Path.Combine(dataDir,"experience.json");if(File.Exists(path)){var prefs=json.Deserialize<Dictionary<string,object>>(File.ReadAllText(path));if(prefs.ContainsKey("quiet"))doNotDisturb=Convert.ToBoolean(prefs["quiet"]);}string source=Path.Combine(dataDir,"media-source.txt");if(File.Exists(source))selectedSource=File.ReadAllText(source).Trim();}catch{}
-  w.Closed+=(s,e)=>{if(!secondary)File.WriteAllText(Path.Combine(dataDir,"experience.json"),json.Serialize(new{monitor=selectedMonitor,quiet=doNotDisturb}));};
+  try{string path=Path.Combine(dataDir,"experience.json");if(File.Exists(path)){var prefs=json.Deserialize<Dictionary<string,object>>(File.ReadAllText(path));Func<string,bool,bool> get=(k,d)=>prefs.ContainsKey(k)?Convert.ToBoolean(prefs[k]):d;doNotDisturb=get("quiet",false);saveChat=get("saveChat",true);clipOn=get("clip",true);shareContext=get("context",true);}string source=Path.Combine(dataDir,"media-source.txt");if(File.Exists(source))selectedSource=File.ReadAllText(source).Trim();}catch{}
+  if(!secondary&&saveChat)LoadChat();
+  w.Closed+=(s,e)=>SavePrefs();
   var face=new StackPanel{Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Center,VerticalAlignment=VerticalAlignment.Center};
   mascot.HorizontalAlignment=HorizontalAlignment.Center;restingShell.Child=null;face.Children.Add(mascot);compactStatus=T("",12);compactStatus.Margin=new Thickness(8,0,0,0);compactStatus.Visibility=Visibility.Collapsed;face.Children.Add(compactStatus);restingShell.Child=face;
   w.AllowDrop=true;w.PreviewDragOver+=(s,e)=>{bool valid=e.Data.GetDataPresent(DataFormats.FileDrop)||HasVirtualFiles(e.Data)||e.Data.GetDataPresent(DataFormats.UnicodeText)||e.Data.GetDataPresent(DataFormats.Bitmap);e.Effects=valid?DragDropEffects.Copy:DragDropEffects.None;e.Handled=true;if(valid){dropHover=true;leaveTimer.Stop();if(page!="shelf")Switch("shelf");if(!opened)Expand(true);}};
@@ -58,6 +58,7 @@ public partial class App {
  // Chat history survives restarts (shared.json is reset at startup, so it lives in its own file).
  static string ChatPath(){return Path.Combine(dataDir,"chat.json");}
  static void LoadChat(){try{if(!File.Exists(ChatPath()))return;var list=new List<Dictionary<string,string>>();foreach(var o in (System.Collections.IEnumerable)json.Deserialize<List<object>>(File.ReadAllText(ChatPath()))){var m=(Dictionary<string,object>)o;list.Add(new Dictionary<string,string>{{"role",""+m["role"]},{"content",""+m["content"]}});}conversation=list.Count>100?list.GetRange(list.Count-100,100):list;}catch{}}
+ static void SavePrefs(){if(secondary)return;try{File.WriteAllText(Path.Combine(dataDir,"experience.json"),json.Serialize(new{monitor=selectedMonitor,quiet=doNotDisturb,saveChat=saveChat,clip=clipOn,context=shareContext}));}catch{}}
  static string SharedPath(){return Path.Combine(dataDir,"shared.json");}
  static string Snap(){return running+"|"+(running?end.Ticks:(long)Math.Round(remaining))+"|"+doNotDisturb+"|"+conversation.Count+"|"+(conversation.Count>0?conversation[conversation.Count-1]["content"].GetHashCode():0);}
  static void SyncTick(){
@@ -70,7 +71,7 @@ public partial class App {
     conversation=list;syncStamp=stamp;syncSnap=Snap();
     if((On("chat")&&list.Count!=count)||(page=="focus"&&was!=running))Render();
    }else if(Snap()!=syncSnap){
-    File.WriteAllText(path,json.Serialize(new Dictionary<string,object>{{"running",running},{"remaining",remaining},{"end",end.Ticks},{"dnd",doNotDisturb},{"conversation",conversation}}));try{File.WriteAllText(ChatPath(),json.Serialize(conversation));}catch{}syncStamp=File.GetLastWriteTimeUtc(path);syncSnap=Snap();
+    File.WriteAllText(path,json.Serialize(new Dictionary<string,object>{{"running",running},{"remaining",remaining},{"end",end.Ticks},{"dnd",doNotDisturb},{"conversation",conversation}}));if(saveChat&&!secondary)try{SafeWrite(ChatPath(),json.Serialize(conversation));}catch{}syncStamp=File.GetLastWriteTimeUtc(path);syncSnap=Snap();
    }
   }catch{}
  }
