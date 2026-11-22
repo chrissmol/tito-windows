@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Globalization;
+using System.Windows;
 namespace Tito {
 public partial class App {
  // Laboratório: confere a lógica (lembretes, agenda, notas, foco) e tira fotos de cada tela e tema.
@@ -43,6 +44,15 @@ public partial class App {
    focusDay=DateTime.Now.ToString("yyyy-MM-dd");focusToday=3900;Need(FocusTodayText()=="Hoje: 1 h 5 min de foco","texto do foco");
    File.WriteAllText(FocusPath(),focusDay+"|1800");FocusLoad();Need(FocusTodayText()=="Hoje: 30 min de foco","foco do dia não foi lido");
    File.WriteAllText(FocusPath(),"2000-01-01|1800");FocusLoad();Need(FocusTodayText()=="Hoje: 0 min de foco","foco de outro dia deve zerar");
+   // Soltar arquivo: lê, fica pronto, e-mail e confirmação; o texto do arquivo vai para a pergunta.
+   string fx=Path.Combine(tmp,"brief-cliente.txt");File.WriteAllText(fx,"Resumo do cliente: entregar a proposta até sexta.");
+   ReceiveDrop(new DataObject(DataFormats.FileDrop,new[]{fx}));flowTimer.Stop();
+   Need(flowState==1&&flowItem!=null&&flowItem.Name=="brief-cliente.txt","soltar arquivo deve iniciar a leitura");Need(flowText.Contains("proposta"),"texto do arquivo deveria ir para a pergunta");
+   Switch("shelf");flowPct=44;FlowPaint();Need(flowBar!=null&&Math.Abs(flowBar.Width-132)<1,"barra de progresso");Capture("flow-lendo");
+   flowState=2;Switch("shelf");Capture("flow-pronto");
+   flowState=3;flowTo="ana@estudio.com";flowBody="Segue o resumo combinado.";Switch("shelf");Capture("flow-email");
+   flowState=4;flowResult="Rascunho aberto no Outlook com o arquivo anexado. É só conferir e enviar.";Switch("shelf");Capture("flow-enviado");
+   flowState=0;flowItem=null;shelf.Clear();dropHover=true;Switch("shelf");Capture("flow-soltar");dropHover=false;Switch("shelf");Capture("flow-vazio");
    // Fotos: agenda (com vencido), notas, área de transferência e cada tema.
    foreach(string p in new[]{"agenda","notes","clipboard"}){Switch(p);Capture(p);}
    foreach(var r in themeData){themeId=r[0];ApplyTheme(true);Switch("home");Capture("theme-"+r[0]);}
