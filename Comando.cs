@@ -27,24 +27,41 @@ public partial class App {
   if((m=Regex.Match(t,@"^(?:foco|focus)(?:\s+(\d{1,3}))?$",RegexOptions.IgnoreCase)).Success){int min=m.Groups[1].Success?Math.Max(1,Math.Min(MaxFocusMin,Int32.Parse(m.Groups[1].Value))):25;add("Iniciar foco de "+min+" min",()=>CmdFocus(min));}
   if(Regex.IsMatch(t,@"^(?:parar|pausar|pause)\s+foco$",RegexOptions.IgnoreCase))add("Pausar o foco",CmdPauseFocus);
   if((m=Regex.Match(t,@"^(?:nota|anotar)\s+(.+)$",RegexOptions.IgnoreCase)).Success){string note=m.Groups[1].Value;add("Anotar: "+note,()=>{try{AddNote(note);CmdDone();}catch(Exception ex){MessageBox.Show(ex.Message,"Tito");}});}
-  if((m=Regex.Match(t,@"^agenda\s+(?:(\d{4}-\d{2}-\d{2})\s+)?(\d{1,2}:\d{2})\s+(.+)$",RegexOptions.IgnoreCase)).Success){string date=m.Groups[1].Success?m.Groups[1].Value:DateTime.Now.ToString("yyyy-MM-dd");string time=m.Groups[2].Value.PadLeft(5,'0');string title=m.Groups[3].Value.Replace("|"," ");add("Agendar "+time+" "+title,()=>{try{AddAgenda(date,time,title);CmdDone();}catch(Exception ex){MessageBox.Show(ex.Message,"Tito");}});}
+  // Mesmo entendimento de datas da agenda e do Robo: "lembrar amanhã 9h dentista", "agenda 25/11 18h30 jantar".
+  if((m=Regex.Match(t,@"^(?:agenda|lembrar|lembrete|lembra)\s+(?!em\s)(.+)$",RegexOptions.IgnoreCase)).Success){string date,time,title;if(ParseAgenda(m.Groups[1].Value,DateTime.Now,out date,out time,out title)){string day=date==DateTime.Now.ToString("yyyy-MM-dd")?"hoje":date==DateTime.Now.AddDays(1).ToString("yyyy-MM-dd")?"amanhã":date.Substring(8,2)+"/"+date.Substring(5,2);string tt=title.Replace("|"," ");add("Criar lembrete · "+day+", "+time+" · "+tt,()=>{try{AddAgenda(date,time,tt);CmdDone();}catch(Exception ex){MessageBox.Show(ex.Message,"Tito");}});}}
   if((m=Regex.Match(t,@"^pausa(?:\s+(\d{1,2}))?$",RegexOptions.IgnoreCase)).Success){int min=m.Groups[1].Success?Math.Max(1,Int32.Parse(m.Groups[1].Value)):5;add("Pausa de "+min+" min",()=>{CmdFocus(min);onBreak=true;});}
   if((m=Regex.Match(t,@"^(?:lembrar|lembrete)\s+em\s+(\d{1,3})\s*(?:min|m)\s+(.+)$",RegexOptions.IgnoreCase)).Success){int min=Int32.Parse(m.Groups[1].Value);string title=m.Groups[2].Value;add("Lembrar em "+min+" min: "+title,()=>{try{var at=DateTime.Now.AddMinutes(min);AddAgenda(at.ToString("yyyy-MM-dd"),at.ToString("HH:mm"),title);CmdDone();}catch(Exception ex){MessageBox.Show(ex.Message,"Tito");}});}
   if((m=Regex.Match(t,@"^volume\s+(\d{1,3})$",RegexOptions.IgnoreCase)).Success){int v=Math.Min(100,Int32.Parse(m.Groups[1].Value));add("Volume em "+v+"%",()=>{DesktopAudio.Volume(v/100f);CmdDone();});}
   if(Regex.IsMatch(t,@"^(?:não incomodar|nao incomodar|dnd)$",RegexOptions.IgnoreCase))add(doNotDisturb?"Desligar não incomodar":"Ligar não incomodar",()=>{doNotDisturb=!doNotDisturb;CmdDone();});
   if(Regex.IsMatch(t,@"^(?:tocar|pausar|play|pause)$",RegexOptions.IgnoreCase))add("Tocar / pausar mídia",()=>SendMedia("toggle"));
   if(Regex.IsMatch(t,@"^(?:próxima|proxima|next)$",RegexOptions.IgnoreCase))add("Próxima faixa",()=>SendMedia("next"));
+  if(Regex.IsMatch(t,@"^(?:hoje|resumo|resumo do dia)$",RegexOptions.IgnoreCase))add(DaySummary(),()=>Switch("agenda"));
+  if((m=Regex.Match(t,@"^(?:buscar|procurar)\s+(.+)$",RegexOptions.IgnoreCase)).Success)foreach(var hit in LocalSearch(m.Groups[1].Value.Trim()))list.Add(hit);
   string low=t.ToLowerInvariant();
   foreach(var p in cmdPages)if(p[1].StartsWith(low)){string target=p[0];add("Abrir página: "+p[1],()=>Switch(target));}
-  if((m=Regex.Match(t,@"^(?:abrir|open)\s+(.+)$",RegexOptions.IgnoreCase)).Success){string target=m.Groups[1].Value.Trim();add("Abrir "+target,()=>CmdOpen(target));}
-  else if(Regex.IsMatch(t,@"^https?://",RegexOptions.IgnoreCase))add("Abrir link",()=>CmdOpen(t));
-  else if(list.Count==0)add("Abrir "+t,()=>CmdOpen(t)); // sem comando conhecido: tenta abrir como programa (notepad, calc, chrome…)
+  if((m=Regex.Match(t,@"^(?:abrir|open)\s+(.+)$",RegexOptions.IgnoreCase)).Success){string target=m.Groups[1].Value.Trim();add("Aplicativo · abrir "+target,()=>CmdOpen(target));}
+  else if(Regex.IsMatch(t,@"^https?://",RegexOptions.IgnoreCase))add("Link · abrir "+t,()=>CmdOpen(t));
+  else if(list.Count==0){add("Perguntar ao Tito: "+t,()=>{chatDraft=t;Switch("robo");if(chatInput!=null){chatInput.Text=t;chatInput.CaretIndex=t.Length;}}); // não entendido: primeiro conversar, depois tentar como programa
+   add("Aplicativo · abrir “"+t+"”",()=>CmdOpen(t));}
   return list;
+ }
+ static string DaySummary(){
+  var now=DateTime.Now;var today=AgendaEntries().Where(p=>AgendaAt(p).Date==now.Date).ToList();var next=today.FirstOrDefault(p=>AgendaAt(p)>now);int late=today.Count(p=>AgendaAt(p)<=now);
+  return "Hoje · "+(today.Count==0?"nada na agenda":today.Count+" na agenda")+(next!=null?" · próximo "+next[1]+" "+next[2]:"")+(late>0?" · "+late+" vencido(s)":"")+" · "+FocusTodayText().Replace("Hoje: ","");
+ }
+ // Busca local: páginas de nota, agenda e itens fixados. Nada sai do PC.
+ static List<KeyValuePair<string,Action>> LocalSearch(string term){
+  var hits=new List<KeyValuePair<string,Action>>();Func<string,bool> has=x=>x!=null&&x.IndexOf(term,StringComparison.CurrentCultureIgnoreCase)>=0;Func<string,string> cut=x=>{x=x.Replace("\r"," ").Replace("\n"," ");int i=Math.Max(0,x.IndexOf(term,StringComparison.CurrentCultureIgnoreCase)-20);x=x.Substring(i);return (i>0?"…":"")+(x.Length>60?x.Substring(0,60)+"…":x);};
+  FlushNotes();for(int n=1;n<=NotePages();n++){int pg=n;string text="";try{text=File.ReadAllText(NotesPath(n));}catch{}if(has(text))hits.Add(new KeyValuePair<string,Action>("Nota "+n+" · "+cut(text),()=>GoNotePage(pg)));}
+  foreach(var p in AgendaEntries().Where(x=>has(x[2])))hits.Add(new KeyValuePair<string,Action>("Agenda · "+p[0].Substring(8,2)+"/"+p[0].Substring(5,2)+" "+p[1]+" "+p[2],()=>Switch("agenda")));
+  foreach(var pin in Pins().Where(has)){string x=pin;hits.Add(new KeyValuePair<string,Action>("Fixado · "+cut(x),()=>{lastClip=x;Clipboard.SetText(x);CmdDone();}));}
+  if(hits.Count==0)hits.Add(new KeyValuePair<string,Action>("Nada encontrado para “"+term+"” em notas, agenda e fixados",()=>{}));
+  return hits.Take(8).ToList();
  }
  static void CommandBox(){
   if(cmdWin!=null){cmdWin.Close();return;}
-  var box=new TextBox{Background=Brushes.Transparent,Foreground=B("#FFF8F6"),CaretBrush=Brushes.White,BorderThickness=new Thickness(0),FontSize=18,Padding=new Thickness(12,10,12,10),ToolTip="foco 25 · pausa 5 · nota texto · lembrar em 10 min texto · volume 40 · não incomodar · agenda 14:30 Reunião · abrir notepad · notas"};
-  var rows=Stack();var hint=T("foco 25  ·  pausa  ·  nota …  ·  lembrar em 10 min …  ·  volume 40  ·  não incomodar  ·  abrir …",11,"#8E8892");hint.Margin=new Thickness(14,0,14,10);
+  var box=new TextBox{Background=Brushes.Transparent,Foreground=B("#FFF8F6"),CaretBrush=Brushes.White,BorderThickness=new Thickness(0),FontSize=18,Padding=new Thickness(12,10,12,10),ToolTip="foco 25 · pausa 5 · nota texto · lembrar amanhã 9h dentista · lembrar em 10 min texto · buscar texto · hoje · volume 40 · não incomodar · abrir notepad · notas"};
+  var rows=Stack();var hint=T("hoje  ·  foco 25  ·  nota …  ·  lembrar amanhã 9h …  ·  buscar …  ·  volume 40  ·  abrir …",11,"#8E8892");hint.TextWrapping=TextWrapping.Wrap;hint.Margin=new Thickness(14,0,14,10);
   var items=new List<KeyValuePair<string,Action>>();int sel=0;
   Action refresh=()=>{items=CommandMatches(box.Text);if(sel>=items.Count)sel=0;rows.Children.Clear();
    for(int i=0;i<items.Count;i++)rows.Children.Add(new Border{CornerRadius=new CornerRadius(8),Margin=new Thickness(6,1,6,1),Padding=new Thickness(8,6,8,6),Background=i==sel?B("#33FFFFFF"):Brushes.Transparent,Child=T(items[i].Key,13)});
