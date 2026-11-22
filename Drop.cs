@@ -94,7 +94,7 @@ public partial class App {
  static UIElement FlowCard(){
   if(flowItem==null||flowState==0||!shelf.Contains(flowItem))return null;
   var box=Stack();flowBar=null;flowLabel=null;
-  var head=T(flowItem.Name,13);head.FontWeight=FontWeights.SemiBold;head.TextTrimming=TextTrimming.CharacterEllipsis;head.Margin=new Thickness(8,4,8,2);head.MaxWidth=480;box.Children.Add(head);
+  var head=T(flowItem.Name,13);head.FontWeight=FontWeights.SemiBold;head.TextTrimming=TextTrimming.CharacterEllipsis;head.Margin=new Thickness(8,4,8,2);head.MaxWidth=480;head.HorizontalAlignment=HorizontalAlignment.Left;if(flowState!=3)box.Children.Add(head);
   if(flowState==1){
    var sub=T("Lendo o arquivo…",11,Theme.Soft);sub.Margin=new Thickness(8,0,0,6);box.Children.Add(sub);
    var track=new Grid{Width=300,Height=4,HorizontalAlignment=HorizontalAlignment.Left,Margin=new Thickness(8,0,0,4)};track.Children.Add(new Border{CornerRadius=new CornerRadius(2),Background=B("#26FFFFFF")});
@@ -104,7 +104,7 @@ public partial class App {
    var sub=T("Pronto. O que você quer fazer?",11,Theme.Soft);sub.Margin=new Thickness(8,0,0,6);box.Children.Add(sub);
    var row=Stack(Orientation.Horizontal);row.Margin=new Thickness(2,0,0,4);row.Children.Add(Btn("Perguntar sobre ele",FlowAsk,"Leva o arquivo para o chat; só vai para a IA quando você apertar Enter"));row.Children.Add(Btn("Enviar por e-mail",()=>{flowState=3;Switch("shelf");}));row.Children.Add(Btn("Fechar",()=>{flowState=0;Switch("shelf");}));box.Children.Add(row);
   }else if(flowState==3){
-   box.Children.Add(FlowField("Para",flowTo,v=>flowTo=v,28,false));box.Children.Add(FlowField("Assunto",flowSubject,v=>flowSubject=v,28,false));box.Children.Add(FlowField("Mensagem",flowBody,v=>flowBody=v,52,true));
+   box.Children.Add(FlowField("Para",flowTo,v=>flowTo=v,28,false));box.Children.Add(FlowField("Assunto",flowSubject,v=>flowSubject=v,28,false));box.Children.Add(FlowField("Mensagem",flowBody,v=>flowBody=v,28,false));
    var row=Stack(Orientation.Horizontal);row.Margin=new Thickness(2,0,0,4);row.Children.Add(PillButton("Enviar",()=>FlowSend()));row.Children.Add(Btn("Cancelar",()=>{flowState=2;Switch("shelf");}));box.Children.Add(row);
   }else{
    var done=T(flowResult,12,Theme.Ok);done.TextWrapping=TextWrapping.Wrap;done.Margin=new Thickness(8,0,8,6);box.Children.Add(done);
