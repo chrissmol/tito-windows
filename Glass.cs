@@ -28,7 +28,7 @@ public partial class App {
  static string Format(double n){n=Math.Max(0,Math.Floor(n));return ((int)n/60).ToString("00")+":"+((int)n%60).ToString("00");}
  static void SetClip(double width,double height){double r=Math.Min(30,height/2);islandClip.Rect=new Rect((620-width)/2,0,width,height);islandClip.RadiusX=r;islandClip.RadiusY=r;}
  static void MorphTo(double width,double height,bool expanding){
-  var time=TimeSpan.FromMilliseconds(expanding?520:300);IEasingFunction ease=expanding?(IEasingFunction)new BackEase{Amplitude=.22,EasingMode=EasingMode.EaseOut}:new QuinticEase{EasingMode=EasingMode.EaseInOut};double r=Math.Min(30,height/2);
+  var time=TimeSpan.FromMilliseconds(expanding?420:240);IEasingFunction ease=expanding?(IEasingFunction)new BackEase{Amplitude=.22,EasingMode=EasingMode.EaseOut}:new QuinticEase{EasingMode=EasingMode.EaseInOut};double r=Math.Min(30,height/2);
   islandClip.BeginAnimation(RectangleGeometry.RectProperty,new System.Windows.Media.Animation.RectAnimation(new Rect((620-width)/2,0,width,height),time){EasingFunction=ease});
   islandClip.BeginAnimation(RectangleGeometry.RadiusXProperty,new DoubleAnimation(r,time){EasingFunction=ease});islandClip.BeginAnimation(RectangleGeometry.RadiusYProperty,new DoubleAnimation(r,time){EasingFunction=ease});
  }
