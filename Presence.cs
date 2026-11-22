@@ -139,7 +139,7 @@ public partial class App {
    if(hold)outsideSince=DateTime.MinValue;else if(outsideSince==DateTime.MinValue)outsideSince=DateTime.UtcNow;else if(DateTime.UtcNow-outsideSince>=TimeSpan.FromMilliseconds(300)){outsideSince=DateTime.MinValue;Expand(false);}}
   else if(!inside){hoverSince=DateTime.MinValue;hoverArmed=true;}else if(!doNotDisturb&&!clickOnly&&hoverArmed){if(hoverSince==DateTime.MinValue)hoverSince=DateTime.UtcNow;else if(DateTime.UtcNow-hoverSince>=HoverDelay){hoverSince=DateTime.MinValue;Expand(true);}} // abre só depois de um instante com o mouse em cima
   // 33 ms só quando há o que animar; em repouso 100 ms bastam para detectar o mouse.
-  hoverTimer.Interval=TimeSpan.FromMilliseconds(opened||inside||gazeNow.X!=0||gazeNow.Y!=0||DateTime.UtcNow<gazeUntil?33:100);
+  hoverTimer.Interval=TimeSpan.FromMilliseconds(opened||inside||gazeNow.X!=0||gazeNow.Y!=0||DateTime.UtcNow<gazeUntil?16:100);
  }
  static void PresenceTick(){
   SyncFullscreenHide();
