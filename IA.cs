@@ -20,7 +20,7 @@ public partial class App {
  static Border IACard(string title,string status,string statusColor,UIElement content,int column,int columns){
   var stack=Stack();var head=T(title,9.5,Theme.Muted);head.Margin=new Thickness(0,0,0,4);stack.Children.Add(head);
   var s=T(status,15,statusColor);s.Margin=new Thickness(0,0,0,6);s.TextTrimming=TextTrimming.CharacterEllipsis;stack.Children.Add(s);if(content!=null)stack.Children.Add(content);
-  var card=new Border{Background=B(Theme.Card),CornerRadius=new CornerRadius(14),Padding=new Thickness(11,9,11,9),Margin=new Thickness(column==0?0:4,0,column==columns-1?0:4,0),Child=stack};Grid.SetColumn(card,column);return card;
+  var card=new Border{Background=B(Theme.Card),BorderBrush=B("#14FFFFFF"),BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(20),Padding=new Thickness(11,9,11,9),Margin=new Thickness(column==0?0:4,0,column==columns-1?0:4,0),Child=stack};Grid.SetColumn(card,column);return card;
  }
  static void IAOverview(){
   var cards=new System.Collections.Generic.List<Func<int,int,Border>>();

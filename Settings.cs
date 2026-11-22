@@ -7,7 +7,7 @@ using System.Windows.Media.Animation;
 namespace Tito {
 public partial class App {
  // Settings: grouped cards with switches and link rows.
- static Border CardBox(UIElement child){return new Border{Background=B(Theme.Card),CornerRadius=new CornerRadius(14),Padding=new Thickness(4),Margin=new Thickness(0,0,0,6),Child=child};}
+ static Border CardBox(UIElement child){return new Border{Background=B(Theme.Card),BorderBrush=B("#14FFFFFF"),BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(20),Padding=new Thickness(4),Margin=new Thickness(0,0,0,6),Child=child};}
  static Border RowBox(UIElement child,Action click){
   var row=new Border{Height=26,CornerRadius=new CornerRadius(9),Background=Brushes.Transparent,Cursor=System.Windows.Input.Cursors.Hand,Child=child,Focusable=true,BorderBrush=Brushes.White};
   var panel=child as Panel;var text=panel!=null&&panel.Children.Count>0?panel.Children[0] as TextBlock:null;if(text!=null)System.Windows.Automation.AutomationProperties.SetName(row,text.Text);

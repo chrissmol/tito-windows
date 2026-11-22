@@ -36,7 +36,7 @@ public partial class App {
  static StackPanel NavIcon(string name,string label){
   var p=new StackPanel{Orientation=Orientation.Horizontal};
   string path=name=="home"?"M1,7 L7,1 13,7 M3,6 L3,13 11,13 11,6 M6,13 L6,9 8,9 8,13":name=="music"?"M5,11 L5,3 12,1 12,9 M5,4 L12,2 M5,11 C5,14 0,14 1,11 C2,9 5,9 5,11 M12,9 C12,12 7,12 8,9 C9,7 12,7 12,9":name=="focus"?"M7,1 A6,6 0 1 1 6.99,1 M7,4 L7,7 10,8":name=="ia"?"M2,2 L12,2 Q14,2 14,4 L14,10 Q14,12 12,12 L5,12 2,14 2,12 Q0,12 0,10 L0,4 Q0,2 2,2 M4,6 L4,8 M10,6 L10,8":name=="painel"?"M2,13 L2,8 M7,13 L7,2 M12,13 L12,6":name=="agenda"?"M1,3 L13,3 13,13 1,13 Z M1,6 L13,6 M4,1 L4,4 M10,1 L10,4":name=="notes"?"M2,1 L12,1 12,13 2,13 Z M4,4 L10,4 M4,7 L10,7 M4,10 L8,10":name=="clipboard"?"M3,2 L11,2 11,13 3,13 Z M5,0 L9,0 9,3 5,3 Z M5,7 L9,7 M5,10 L9,10":name=="settings"?"M7,0 L9,3 12,2 12,5 14,7 12,9 12,12 9,11 7,14 5,11 2,12 2,9 0,7 2,5 2,2 5,3 Z M7,4 A3,3 0 1 1 6.99,4":"M7,0 L7,14 M0,7 L14,7 M2,2 L12,12 M2,12 L12,2";
-  p.Children.Add(new System.Windows.Shapes.Path{Data=Geometry.Parse(path),Stroke=B(label!=null?Accent(name):"#EDE6E0"),StrokeThickness=1.5,StrokeStartLineCap=PenLineCap.Round,StrokeEndLineCap=PenLineCap.Round,StrokeLineJoin=PenLineJoin.Round,Width=15,Height=15,VerticalAlignment=VerticalAlignment.Center,Stretch=Stretch.Uniform});
+  p.Children.Add(new System.Windows.Shapes.Path{Data=Geometry.Parse(path),Stroke=B(label!=null?Accent(name):"#EDE6E0"),Opacity=label!=null?1:.75,StrokeThickness=1.25,StrokeStartLineCap=PenLineCap.Round,StrokeEndLineCap=PenLineCap.Round,StrokeLineJoin=PenLineJoin.Round,Width=15,Height=15,VerticalAlignment=VerticalAlignment.Center,Stretch=Stretch.Uniform});
   if(label!=null){var text=T(label,10,Accent(name));text.Margin=new Thickness(6,0,0,0);p.Children.Add(text);}return p;
  }
  static void SendMedia(string action,double pos=0){
@@ -84,6 +84,8 @@ public partial class App {
  static Color[] GlassColors(Nullable<Color> tint){
   Color black=Color.FromRgb(5,5,6);return new Color[]{black,black,black};
  }
+ // Fio de luz de 1 px na borda e brilho suave no topo: dá a sensação de vidro sem mexer no conteúdo.
+ static Border Sheen(){var edge=new LinearGradientBrush(Color.FromArgb(70,255,255,255),Color.FromArgb(12,255,255,255),90);var top=new Border{IsHitTestVisible=false,Height=90,VerticalAlignment=VerticalAlignment.Top,Background=new LinearGradientBrush(Color.FromArgb(22,255,255,255),Colors.Transparent,90)};var g=new Grid{IsHitTestVisible=false};g.Children.Add(top);g.Children.Add(new Border{IsHitTestVisible=false,BorderBrush=edge,BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(29)});return new Border{IsHitTestVisible=false,Child=g};}
  static LinearGradientBrush NeutralGlass(){
   Color[] c=GlassColors(null);glassBrush=new LinearGradientBrush(new GradientStopCollection{new GradientStop(c[0],0),new GradientStop(c[1],.5),new GradientStop(c[2],1)},90);return glassBrush;
  }
