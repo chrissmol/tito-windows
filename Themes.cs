@@ -11,6 +11,7 @@ public partial class App {
  // They tint buttons, the drawer glow, the slow glass backdrop and the eyes' mood colors. The eyes stay eyes: only their color changes.
  static readonly string[][] themeData={
   new[]{"padrao","Padrão","#FF375F","#BF5AF2","#FF9F0A","#FF453A","#FFD60A","#FFFFFF"},
+  new[]{"auto","Automático · dia e noite"},
   new[]{"neon","Neon","#FF2E93","#A855FF","#00F0FF","#39FF88","#FFF000","#B8FFF2"},
   new[]{"sol","Pôr do sol","#FF5E62","#FF9966","#FFB347","#FF6FA3","#FFD36E","#FFE2C2"},
   new[]{"oceano","Oceano","#00B4D8","#4895EF","#48CAE4","#2EC4B6","#90E0EF","#D4F4FF"},
@@ -18,6 +19,11 @@ public partial class App {
   new[]{"retro","Retrô","#FF3EA5","#FFE600","#00E5FF","#7CFF3F","#FF7A00","#FFF3A8"},
   new[]{"capa","Seguir a capa"}};
  static string themeId;static Nullable<Color> coverColor;static GradientStop[] backdrop;
+ static Color Darken(Color c,double t){return Color.FromRgb((byte)(c.R*(1-t)),(byte)(c.G*(1-t)),(byte)(c.B*(1-t)));}
+ static bool IsDay(){int h=DateTime.Now.Hour;return h>=6&&h<18;}
+ static bool lastDay;
+ // Automático: mesmas cores do Padrão, mais claras das 6h às 18h e mais escuras à noite. Chamado a cada segundo; só age na troca.
+ static void AutoThemeTick(){if(themeId!="auto"||IsDay()==lastDay)return;lastDay=IsDay();ApplyTheme(true);}
  static string ThemeFile(){return System.IO.Path.Combine(dataDir,"tema.txt");}
  static string Hex(Color c){return "#"+c.R.ToString("X2")+c.G.ToString("X2")+c.B.ToString("X2");}
  static Color Lighten(Color c,double t){return Color.FromRgb((byte)(c.R+(255-c.R)*t),(byte)(c.G+(255-c.G)*t),(byte)(c.B+(255-c.B)*t));}
@@ -29,8 +35,9 @@ public partial class App {
  }
  // The current theme's row; "capa" derives its accents from the cover color and falls back to the default until a cover is known.
  static string[] ThemeRow(){
-  if(themeId==null){themeId="padrao";try{if(File.Exists(ThemeFile()))themeId=File.ReadAllText(ThemeFile()).Trim();}catch{}}
+  if(themeId==null){themeId="auto";try{if(File.Exists(ThemeFile()))themeId=File.ReadAllText(ThemeFile()).Trim();}catch{}}
   if(themeId=="capa"&&coverColor.HasValue){Color c=coverColor.Value;return new[]{"capa","",Hex(c),Hex(Hue(c,40)),Hex(Hue(c,-40)),Hex(Hue(c,80)),Hex(Hue(c,-80)),Hex(Lighten(c,.6))};}
+  if(themeId=="auto"){bool day=IsDay();var o=new string[8];o[0]="auto";o[1]="";for(int i=2;i<7;i++){Color a=HexColor(themeData[0][i]);o[i]=Hex(day?Lighten(a,.3):Darken(a,.3));}o[7]=day?"#FFFFFF":"#B9C4E6";return o;}
   foreach(var r in themeData)if(r[0]==themeId&&r.Length>3)return r;
   return themeData[0];
  }
@@ -71,7 +78,9 @@ public partial class App {
   var pick=new ComboBox{Height=28,Margin=new Thickness(4,0,4,6)};ThemeRow();
   foreach(var r in themeData){pick.Items.Add(new ComboBoxItem{Content=r[1],Tag=r[0]});if(r[0]==themeId)pick.SelectedIndex=pick.Items.Count-1;}
   pick.SelectionChanged+=(s,e)=>{var it=pick.SelectedItem as ComboBoxItem;if(it==null||(string)it.Tag==themeId)return;themeId=(string)it.Tag;try{File.WriteAllText(ThemeFile(),themeId);}catch{}ApplyTheme(true);};
-  box.Children.Add(pick);return CardBox(box);
+  box.Children.Add(pick);
+  var note=T("Automático: cores mais claras das 6h às 18h e mais escuras à noite.",10.5,Theme.Soft);note.TextWrapping=TextWrapping.Wrap;note.Margin=new Thickness(8,0,8,4);box.Children.Add(note);
+  return CardBox(box);
  }
 }
 }

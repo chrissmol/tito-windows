@@ -38,12 +38,35 @@ public partial class App {
   if(Regex.IsMatch(t,@"^(?:hoje|resumo|resumo do dia)$",RegexOptions.IgnoreCase))add(DaySummary(),()=>Switch("agenda"));
   if((m=Regex.Match(t,@"^(?:buscar|procurar)\s+(.+)$",RegexOptions.IgnoreCase)).Success)foreach(var hit in LocalSearch(m.Groups[1].Value.Trim()))list.Add(hit);
   string low=t.ToLowerInvariant();
+  if(low=="rotinas"||low=="editar rotinas")add("Editar rotinas (abre o arquivo)",EditRoutines);
+  if(low.Length>=3)foreach(var r in Routines())if(r[0].ToLowerInvariant().StartsWith(low)){string steps=r[1];add("Rotina · "+r[0]+" ("+steps+")",()=>RunRoutine(steps));}
   foreach(var p in cmdPages)if(p[1].StartsWith(low)){string target=p[0];add("Abrir página: "+p[1],()=>Switch(target));}
   if((m=Regex.Match(t,@"^(?:abrir|open)\s+(.+)$",RegexOptions.IgnoreCase)).Success){string target=m.Groups[1].Value.Trim();add("Aplicativo · abrir "+target,()=>CmdOpen(target));}
   else if(Regex.IsMatch(t,@"^https?://",RegexOptions.IgnoreCase))add("Link · abrir "+t,()=>CmdOpen(t));
   else if(list.Count==0){add("Perguntar ao Tito: "+t,()=>{chatDraft=t;Switch("robo");if(chatInput!=null){chatInput.Text=t;chatInput.CaretIndex=t.Length;}}); // não entendido: primeiro conversar, depois tentar como programa
    add("Aplicativo · abrir “"+t+"”",()=>CmdOpen(t));}
   return list;
+ }
+
+ // Rotinas: arquivo rotinas.txt, uma por linha, "nome = comando ; comando". Cada passo é um comando da caixa de comando.
+ const string DefaultRoutines="# Rotinas do Tito: uma por linha, no formato  nome = passo ; passo\n# Cada passo é um comando da caixa de comando (Ctrl+Alt+Espaço). Edite à vontade.\ncomeçar o dia = agenda ; foco 25\nterminar o dia = parar foco ; notas\n";
+ static int routineDepth;
+ static string RoutinesPath(){return Path.Combine(dataDir,"rotinas.txt");}
+ static List<string[]> ParseRoutines(string text){
+  var list=new List<string[]>();
+  foreach(var line in (text??"").Split('\n')){string l=line.Trim();int eq=l.IndexOf('=');if(l.Length==0||l[0]=='#'||eq<1)continue;string name=l.Substring(0,eq).Trim(),steps=l.Substring(eq+1).Trim();if(name.Length>0&&steps.Length>0)list.Add(new[]{name,steps});}
+  return list;
+ }
+ static List<string[]> Routines(){
+  try{if(!File.Exists(RoutinesPath())){Directory.CreateDirectory(dataDir);File.WriteAllText(RoutinesPath(),DefaultRoutines.Replace("\n",Environment.NewLine),new System.Text.UTF8Encoding(true));}return ParseRoutines(File.ReadAllText(RoutinesPath()));}
+  catch{return ParseRoutines(DefaultRoutines);}
+ }
+ static void EditRoutines(){Routines();CmdOpen(RoutinesPath());}
+ static void RunRoutine(string steps){
+  if(routineDepth>2)return; // uma rotina que chama a si mesma não trava o Tito
+  routineDepth++;
+  try{foreach(var s in steps.Split(';')){string step=s.Trim();if(step.Length==0)continue;var m=CommandMatches(step);if(m.Count>0&&!m[0].Key.StartsWith("Perguntar ao Tito:"))m[0].Value();}CmdDone();}
+  finally{routineDepth--;}
  }
  static string DaySummary(){
   var now=DateTime.Now;var today=AgendaEntries().Where(p=>AgendaAt(p).Date==now.Date).ToList();var next=today.FirstOrDefault(p=>AgendaAt(p)>now);int late=today.Count(p=>AgendaAt(p)<=now);
@@ -61,7 +84,7 @@ public partial class App {
  static void CommandBox(){
   if(cmdWin!=null){cmdWin.Close();return;}
   var box=new TextBox{Background=Brushes.Transparent,Foreground=B("#FFF8F6"),CaretBrush=Brushes.White,BorderThickness=new Thickness(0),FontSize=18,Padding=new Thickness(12,10,12,10),ToolTip="foco 25 · pausa 5 · nota texto · lembrar amanhã 9h dentista · lembrar em 10 min texto · buscar texto · hoje · volume 40 · não incomodar · abrir notepad · notas"};
-  var rows=Stack();var hint=T("hoje  ·  foco 25  ·  nota …  ·  lembrar amanhã 9h …  ·  buscar …  ·  volume 40  ·  abrir …",11,"#8E8892");hint.TextWrapping=TextWrapping.Wrap;hint.Margin=new Thickness(14,0,14,10);
+  var rows=Stack();var hint=T("hoje  ·  foco 25  ·  nota …  ·  lembrar amanhã 9h …  ·  buscar …  ·  rotinas  ·  abrir …",11,"#8E8892");hint.TextWrapping=TextWrapping.Wrap;hint.Margin=new Thickness(14,0,14,10);
   var items=new List<KeyValuePair<string,Action>>();int sel=0;
   Action refresh=()=>{items=CommandMatches(box.Text);if(sel>=items.Count)sel=0;rows.Children.Clear();
    for(int i=0;i<items.Count;i++)rows.Children.Add(new Border{CornerRadius=new CornerRadius(8),Margin=new Thickness(6,1,6,1),Padding=new Thickness(8,6,8,6),Background=i==sel?B("#33FFFFFF"):Brushes.Transparent,Child=T(items[i].Key,13)});

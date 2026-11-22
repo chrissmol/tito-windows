@@ -59,9 +59,76 @@ public partial class App {
  static readonly string[] flowTextExts={".txt",".md",".csv",".json",".log",".xml",".html",".cs",".py",".js",".ts",".ini",".yml",".yaml",".srt"};
  static void FlowStart(ShelfItem item){
   flowItem=item;flowState=1;flowPct=0;flowStarted=DateTime.UtcNow;celebrateUntil=DateTime.MinValue;flowText="";flowTo="";flowBody="";flowSubject=item.Name;flowResult="";
-  try{string p=item.Files[0];var info=new FileInfo(p);if(info.Exists&&info.Length<=2*1024*1024&&Array.IndexOf(flowTextExts,Path.GetExtension(p).ToLowerInvariant())>=0){string t=File.ReadAllText(p);flowText=t.Length>6000?t.Substring(0,6000):t;}}catch{}
+  try{string p=item.Files[0];var info=new FileInfo(p);if(info.Exists&&info.Length<=2*1024*1024&&Array.IndexOf(flowTextExts,Path.GetExtension(p).ToLowerInvariant())>=0){string t=File.ReadAllText(p);flowText=t.Length>6000?t.Substring(0,6000):t;}else if(info.Exists&&info.Length<=20*1024*1024&&Path.GetExtension(p).ToLowerInvariant()==".pdf")flowText=PdfText(File.ReadAllBytes(p));}catch{}
   if(flowTimer==null){flowTimer=new System.Windows.Threading.DispatcherTimer{Interval=TimeSpan.FromMilliseconds(40)};flowTimer.Tick+=(s,e)=>FlowTick();}
   flowTimer.Start();if(page=="shelf")Switch("shelf");
+ }
+
+ // Lê o texto de PDF sem biblioteca: descomprime os fluxos Flate e junta os textos de Tj/TJ.
+ // shortcut: só texto simples (fonte com codificação padrão); PDF escaneado ou com fonte embutida codificada volta vazio, aí o Tito avisa que não leu.
+ static string PdfText(byte[] raw){
+  var latin=Encoding.GetEncoding("iso-8859-1");string s=latin.GetString(raw);var sb=new StringBuilder();int pos=0;
+  while(sb.Length<6000){
+   int st=s.IndexOf("stream",pos,StringComparison.Ordinal);if(st<0)break;
+   if(st>=3&&String.CompareOrdinal(s,st-3,"end",0,3)==0){pos=st+6;continue;}
+   int a=st+6;if(a<s.Length&&s[a]=='\r')a++;if(a<s.Length&&s[a]=='\n')a++;
+   int b=s.IndexOf("endstream",a,StringComparison.Ordinal);if(b<0)break;pos=b+9;
+   int d=s.LastIndexOf("obj",st,StringComparison.Ordinal);string dict=d>=0?s.Substring(d,st-d):"";
+   byte[] data=new byte[b-a];Buffer.BlockCopy(raw,a,data,0,b-a);
+   if(dict.IndexOf("/FlateDecode",StringComparison.Ordinal)>=0){
+    if(data.Length<3)continue;
+    try{using(var ms=new MemoryStream(data,2,data.Length-2))using(var z=new System.IO.Compression.DeflateStream(ms,System.IO.Compression.CompressionMode.Decompress))using(var o=new MemoryStream()){z.CopyTo(o);data=o.ToArray();}}catch{continue;}
+   }else if(dict.IndexOf("/Filter",StringComparison.Ordinal)>=0)continue;
+   PdfStreamText(latin.GetString(data),sb);
+  }
+  string text=System.Text.RegularExpressions.Regex.Replace(sb.ToString(),@"\s+"," ").Trim();
+  return text.Length>6000?text.Substring(0,6000):text;
+ }
+ static void PdfSpace(StringBuilder sb){if(sb.Length>0&&sb[sb.Length-1]!=' ')sb.Append(' ');}
+ static void PdfStreamText(string c,StringBuilder sb){
+  int from=0;
+  while(true){
+   int bt=c.IndexOf("BT",from,StringComparison.Ordinal);if(bt<0)return;int et=c.IndexOf("ET",bt+2,StringComparison.Ordinal);if(et<0)et=c.Length;from=et;
+   string seg=c.Substring(bt+2,et-bt-2);int n=seg.Length,i=0;bool arr=false;
+   while(i<n){
+    char ch=seg[i];
+    if(ch=='('){
+     int depth=1;i++;
+     while(i<n&&depth>0){
+      ch=seg[i];
+      if(ch=='\\'&&i+1<n){
+       i++;char e=seg[i];
+       if(e>='0'&&e<='7'){int v=0,k=0;while(k<3&&i<n&&seg[i]>='0'&&seg[i]<='7'){v=v*8+(seg[i]-'0');i++;k++;}i--;if(v>=32)sb.Append((char)(v&255));}
+       else if(e=='n'||e=='r'||e=='t')PdfSpace(sb);
+       else if(e=='('||e==')'||e=='\\')sb.Append(e);
+      }
+      else if(ch=='(')depth++;
+      else if(ch==')'){depth--;}
+      else if(ch>=32)sb.Append(ch);
+      i++;
+     }
+     if(!arr)PdfSpace(sb);
+     continue;
+    }
+    if(ch=='['){arr=true;i++;continue;}
+    if(ch==']'){arr=false;PdfSpace(sb);i++;continue;}
+    if(arr&&ch=='-'&&i+1<n&&Char.IsDigit(seg[i+1])){int j=i+1;while(j<n&&(Char.IsDigit(seg[j])||seg[j]=='.'))j++;double v;if(Double.TryParse(seg.Substring(i,j-i),System.Globalization.NumberStyles.Float,System.Globalization.CultureInfo.InvariantCulture,out v)&&v<-200)PdfSpace(sb);i=j;continue;}
+    if(!arr&&ch=='T'&&i+1<n&&(seg[i+1]=='d'||seg[i+1]=='D'||seg[i+1]=='*'||seg[i+1]=='m')&&(i==0||Char.IsWhiteSpace(seg[i-1]))&&(i+2>=n||Char.IsWhiteSpace(seg[i+2]))){PdfSpace(sb);i+=2;continue;}
+    i++;
+   }
+   PdfSpace(sb);
+  }
+ }
+ // Auto-teste: PDF mínimo, com fluxo puro e com fluxo Flate.
+ static void CheckPdf(){
+  string body="BT /F1 12 Tf (Ola) Tj 0 -14 Td [(mun)-300(do)-250(!)] TJ (caf\\351 \\(ok\\)) Tj ET";
+  var latin=Encoding.GetEncoding("iso-8859-1");
+  byte[] plain=latin.GetBytes("%PDF-1.4\n1 0 obj\n<< /Length 10 >>\nstream\n"+body+"\nendstream\nendobj\n");
+  byte[] packed;
+  using(var o=new MemoryStream()){o.WriteByte(0x78);o.WriteByte(0x9C);using(var z=new System.IO.Compression.DeflateStream(o,System.IO.Compression.CompressionMode.Compress,true)){var bytes=latin.GetBytes(body);z.Write(bytes,0,bytes.Length);}
+   var head=latin.GetBytes("%PDF-1.4\n1 0 obj\n<< /Filter /FlateDecode >>\nstream\n");var tail=latin.GetBytes("\nendstream\nendobj\n");var all=new MemoryStream();all.Write(head,0,head.Length);var po=o.ToArray();all.Write(po,0,po.Length);all.Write(tail,0,tail.Length);packed=all.ToArray();}
+  const string want="Ola mun do ! café (ok)";
+  if(PdfText(plain)!=want||PdfText(packed)!=want||PdfText(latin.GetBytes("%PDF-1.4 sem texto"))!="")throw new Exception("PDF text");
  }
  static void FlowPaint(){if(flowBar!=null)flowBar.Width=3*flowPct;if(flowLabel!=null)flowLabel.Text=Math.Round(flowPct)+" %";}
  static void FlowTick(){
