@@ -13,7 +13,7 @@ public partial class App {
   if(undoTimer==null){undoTimer=new System.Windows.Threading.DispatcherTimer{Interval=TimeSpan.FromSeconds(6)};undoTimer.Tick+=(a,b)=>HideUndo();}
   var row=Stack(Orientation.Horizontal);row.Children.Add(T(text,12));var back=Btn("Desfazer",UndoNow,"Desfazer");back.Padding=new Thickness(8,2,8,2);row.Children.Add(back);
   undoBar=new Border{Background=B("#EE232328"),CornerRadius=new CornerRadius(16),Padding=new Thickness(12,2,4,2),HorizontalAlignment=HorizontalAlignment.Center,VerticalAlignment=VerticalAlignment.Bottom,Margin=new Thickness(0,0,0,2),Child=row};
-  Grid.SetRow(undoBar,1);Panel.SetZIndex(undoBar,5);host.Children.Add(undoBar);undoTimer.Start();
+  Grid.SetRow(undoBar,1);System.Windows.Controls.Panel.SetZIndex(undoBar,5);host.Children.Add(undoBar);undoTimer.Start();
  }
  static void UndoNow(){var u=undoDo;undoDo=null;undoCommit=null;HideUndo();if(u!=null){u();Switch(page);}}
  static void HideUndo(){
