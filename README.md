@@ -91,3 +91,7 @@ Na aba Mídia, os olhos se transformam em sete barras que mostram o histórico r
 - Claude Code: o cartão do dashboard conta as sessões abertas (um arquivo por sessão em `Dados\sessions`, apagado no fim da sessão) e mostra "N aguardando você" quando alguma pede aprovação.
 
 - Caixa de comando (Ctrl+Alt+Espaço): além de foco, nota, agenda e abrir, agora aceita `pausa 5`, `lembrar em 10 min texto`, `volume 40` e `não incomodar`.
+
+## Laboratório
+
+Depois de qualquer atualização, dê dois cliques em `Laboratorio.cmd`: compila, confere abrir/fechar, lembretes (perdidos, adiados, não incomodar), notas, foco e frases de lembrete, e tira fotos de cada tela, tema e olhar. O resultado fica em `Dados\laboratorio.txt`, `Dados\laboratorio-telas.png` e `Dados\laboratorio-olhos.png` (abrem sozinhas). Roda numa pasta temporária: não mexe nas suas notas nem lembretes. No GitHub o mesmo laboratório roda em cada PR (resumo na página da execução, imagens no artefato `tito-visual-previews`).
