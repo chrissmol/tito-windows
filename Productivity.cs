@@ -48,6 +48,10 @@ public partial class App {
  static int notesPage=1;
  static string NotesPath(int n=0){if(n==0)n=notesPage;return Path.Combine(dataDir,n==1?"notes.txt":"notes-"+n+".txt");}
  static int NotePages(){int n=1;while(File.Exists(NotesPath(n+1)))n++;return n;}
+ // A aba mostra a primeira linha da página (até 14 letras); vazia, o número.
+ static string NoteTitle(int n){try{string first=File.Exists(NotesPath(n))?File.ReadAllText(NotesPath(n)).Split('\n').Select(l=>l.Trim().TrimStart('#',' ')).FirstOrDefault(l=>l.Length>0):null;if(!String.IsNullOrEmpty(first))return first.Length>14?first.Substring(0,14)+"…":first;}catch{}return n.ToString();}
+ // Junta todas as páginas num .md em Dados e mostra o arquivo no Explorer.
+ static void ExportNotes(){FlushNotes();var sb=new System.Text.StringBuilder();for(int n=1;n<=NotePages();n++){string text="";try{text=File.ReadAllText(NotesPath(n));}catch{}sb.Append("## "+NoteTitle(n)+"\n\n"+text.TrimEnd()+"\n\n");}string path=Path.Combine(dataDir,"notas-exportadas.md");try{SafeWrite(path,sb.ToString());System.Diagnostics.Process.Start("explorer.exe","/select,\""+path+"\"");}catch(Exception ex){error="Não consegui exportar as notas. "+ex.Message;ShowError();}}
  static void GoNotePage(int n){FlushNotes();notesPage=n;Switch("notes");}
  static string AgendaPath(){return Path.Combine(dataDir,"agenda.txt");}
  [System.Runtime.InteropServices.DllImport("user32.dll")] static extern uint GetClipboardSequenceNumber();static uint clipSeq;
@@ -71,8 +75,8 @@ public partial class App {
   FlushNotes();ScrollViewer sc;var rows=Panel("Notas",out sc);
   string saved="";try{if(File.Exists(NotesPath()))saved=File.ReadAllText(NotesPath());}catch{}
   var bar=Stack(Orientation.Horizontal);bar.Margin=new Thickness(0,0,0,6);int total=NotePages();
-  for(int n=1;n<=total;n++){int pg=n;var tab=Btn(n.ToString(),()=>GoNotePage(pg),"Página "+n);tab.Padding=new Thickness(8,2,8,2);if(n==notesPage)tab.Background=B("#40FFFFFF");bar.Children.Add(tab);}
-  var more=Btn("+",()=>{int next=NotePages()+1;try{File.WriteAllText(NotesPath(next),"");}catch{}GoNotePage(next);},"Nova página");more.Padding=new Thickness(8,2,8,2);bar.Children.Add(more);
+  for(int n=1;n<=total;n++){int pg=n;var tab=Btn(NoteTitle(n),()=>GoNotePage(pg),"Página "+n);tab.Padding=new Thickness(8,2,8,2);if(n==notesPage)tab.Background=B("#40FFFFFF");bar.Children.Add(tab);}
+  var more=Btn("+",()=>{int next=NotePages()+1;try{File.WriteAllText(NotesPath(next),"");}catch{}GoNotePage(next);},"Nova página");more.Padding=new Thickness(8,2,8,2);bar.Children.Add(more);var export=Btn("⇩",ExportNotes,"Exportar todas as páginas em .md");export.Padding=new Thickness(8,2,8,2);bar.Children.Add(export);
   var find=new TextBox{Width=110,Background=B("#18FFFFFF"),Foreground=B(Theme.Text),CaretBrush=Brushes.White,BorderThickness=new Thickness(0),Padding=new Thickness(6,3,6,3),FontSize=11,Margin=new Thickness(8,0,0,0),ToolTip="Buscar nas páginas (Enter)"};
   find.KeyDown+=(s2,e2)=>{if(e2.Key!=System.Windows.Input.Key.Enter||find.Text.Trim()=="")return;FlushNotes();int count=NotePages();for(int k=1;k<=count;k++){int n=(notesPage-1+k)%count+1;try{if(File.ReadAllText(NotesPath(n)).IndexOf(find.Text.Trim(),StringComparison.CurrentCultureIgnoreCase)>=0){GoNotePage(n);return;}}catch{}}find.Text="Nada encontrado";};bar.Children.Add(find);notesState=T("",11,Theme.Muted);notesState.Margin=new Thickness(8,0,0,0);bar.Children.Add(notesState);rows.Children.Add(bar);
   notesBox=new TextBox{Text=saved,AcceptsReturn=true,TextWrapping=TextWrapping.Wrap,Background=B("#18FFFFFF"),Foreground=B(Theme.Text),CaretBrush=Brushes.White,BorderThickness=new Thickness(0),Padding=new Thickness(10),FontSize=13,MinHeight=130,VerticalScrollBarVisibility=ScrollBarVisibility.Auto};
