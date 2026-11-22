@@ -50,13 +50,27 @@ public partial class App {
   var note=T("Dados do PC: bateria, volume, app em foco, mídia e agenda de hoje. Data, hora e timer vão sempre. A IA embutida roda neste PC; um servidor externo em 127.0.0.1 pode repassar para a nuvem.",10.5,Theme.Soft);note.TextWrapping=TextWrapping.Wrap;note.Margin=new Thickness(8,4,8,4);box.Children.Add(note);
   return CardBox(box);
  }
+ // Atalho da caixa de comando e horário do resumo do dia.
+ static UIElement ShortcutCard(){
+  var box=Stack();var title=T("Atalho e resumo do dia",12,Theme.Heading);title.FontWeight=FontWeights.SemiBold;title.Margin=new Thickness(8,6,0,6);box.Children.Add(title);
+  var keys=new ComboBox{Height=28,Margin=new Thickness(4,0,4,6),ToolTip="Atalho que abre a caixa de comando"};foreach(var h in Hotkeys)keys.Items.Add(new ComboBoxItem{Content="Caixa de comando · "+h[1],Tag=h[0]});keys.SelectedIndex=Math.Max(0,Array.IndexOf(Hotkeys,HotkeyDef()));
+  keys.SelectionChanged+=(s,e)=>{var it=keys.SelectedItem as ComboBoxItem;if(it==null||(string)it.Tag==hotkeyKey)return;string old=hotkeyKey;hotkeyKey=(string)it.Tag;
+   if(!ApplyHotkey()){hotkeyKey=old;ApplyHotkey();error="Outro programa já usa esse atalho. Escolha outro.";ShowError();Switch("settings");}else SavePrefs();};
+  box.Children.Add(keys);
+  box.Children.Add(ToggleRow("Resumo do dia",summaryOn,v=>{summaryOn=v;SavePrefs();}));
+  var hours=new[]{"16:00","17:00","18:00","19:00","20:00","21:00","22:00"};var at=new ComboBox{Height=28,Margin=new Thickness(4,0,4,6),ToolTip="Horário do resumo do dia"};foreach(var h in hours)at.Items.Add(new ComboBoxItem{Content="Resumo às "+h,Tag=h});at.SelectedIndex=Math.Max(0,Array.IndexOf(hours,summaryAt));
+  at.SelectionChanged+=(s,e)=>{var it=at.SelectedItem as ComboBoxItem;if(it!=null){summaryAt=(string)it.Tag;SavePrefs();}};box.Children.Add(at);
+  box.Children.Add(LinkRow("Gerar o resumo agora",RunSummary));
+  var note=T("O resumo usa agenda, foco e notas de hoje. Com a IA local pronta e “Enviar dados do PC à IA” ligado, ela escreve o texto; senão sai a versão simples.",10.5,Theme.Soft);note.TextWrapping=TextWrapping.Wrap;note.Margin=new Thickness(8,4,8,4);box.Children.Add(note);
+  return CardBox(box);
+ }
  static void Settings(){
   var grid=new Grid{Margin=new Thickness(0,0,0,-8)};grid.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(1,GridUnitType.Star)});grid.ColumnDefinitions.Add(new ColumnDefinition{Width=new GridLength(1,GridUnitType.Star)});
   var scroll=new ScrollViewer{Content=grid,VerticalScrollBarVisibility=ScrollBarVisibility.Auto};view.Children.Add(scroll);
   var left=Stack();left.Margin=new Thickness(0,0,5,0);
   var switches=Stack();switches.Children.Add(ToggleRow("Não incomodar",doNotDisturb,v=>doNotDisturb=v));switches.Children.Add(ToggleRow("Iniciar com o Windows",AutostartOn(),SetAutostart));switches.Children.Add(ToggleRow("Manter acordado",keepAwake,SetKeepAwake));left.Children.Add(CardBox(switches));
   var open=Stack();open.Children.Add(ToggleRow("Abrir ao passar o mouse",!clickOnly,v=>{clickOnly=!v;SavePrefs();}));open.Children.Add(ToggleRow("Fixar aberto",pinOpen,v=>{pinOpen=v;SavePrefs();}));left.Children.Add(CardBox(open));
-  left.Children.Add(PrivacyCard());
+  left.Children.Add(PrivacyCard());left.Children.Add(ShortcutCard());
   var links=Stack();links.Children.Add(LinkRow("Prateleira",()=>Switch("shelf")));links.Children.Add(LinkRow("Rever apresentação",TourStart));links.Children.Add(LinkRow("Editar rotinas",EditRoutines));links.Children.Add(LinkRow("Áudio",()=>Switch("audio")));links.Children.Add(LinkRow("Conectar Claude",()=>Switch("agent")));left.Children.Add(CardBox(links));left.Children.Add(MonitorsCard());
   var right=Stack();right.Margin=new Thickness(5,0,0,0);Grid.SetColumn(right,1);
   var robo=Stack();var title=T("Robo · IA local",12,Theme.Heading);title.FontWeight=FontWeights.SemiBold;title.Margin=new Thickness(8,6,0,6);robo.Children.Add(title);

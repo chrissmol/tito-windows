@@ -55,10 +55,19 @@ public partial class App {
  static void GoNotePage(int n){FlushNotes();notesPage=n;Switch("notes");}
  static string AgendaPath(){return Path.Combine(dataDir,"agenda.txt");}
  [System.Runtime.InteropServices.DllImport("user32.dll")] static extern uint GetClipboardSequenceNumber();static uint clipSeq;
+ [System.Runtime.InteropServices.DllImport("user32.dll")] static extern IntPtr GetClipboardOwner();
+ [System.Runtime.InteropServices.DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hwnd,out uint pid);
+ static bool clipPaused;static readonly string[] secretApps={"1password","bitwarden","keepass","lastpass","dashlane","nordpass","enpass","roboform","protonpass","keeper"};
+ static bool IsSecretApp(string name){name=(name??"").ToLowerInvariant();return secretApps.Any(a=>name.Contains(a));}
+ // Quem copiou (dono da área de transferência) ou o app em foco é um gerenciador de senhas: não guarda.
+ static bool FromPasswordManager(){
+  try{IntPtr owner=GetClipboardOwner();if(owner!=IntPtr.Zero){uint pid;GetWindowThreadProcessId(owner,out pid);if(IsSecretApp(System.Diagnostics.Process.GetProcessById((int)pid).ProcessName))return true;}}catch{}
+  return IsSecretApp(DesktopContext.ForegroundApp);
+ }
  static void ClipboardTick(){
-  uint seq=GetClipboardSequenceNumber();if(seq==clipSeq)return;clipSeq=seq;if(!clipOn)return;
+  uint seq=GetClipboardSequenceNumber();if(seq==clipSeq)return;clipSeq=seq;if(!clipOn||clipPaused)return;
   try{
-   if(!Clipboard.ContainsText()||Clipboard.ContainsData("ExcludeClipboardContentFromMonitorProcessing"))return;
+   if(!Clipboard.ContainsText()||Clipboard.ContainsData("ExcludeClipboardContentFromMonitorProcessing")||FromPasswordManager())return;
    string text=Clipboard.GetText();if(String.IsNullOrWhiteSpace(text)||text==lastClip||text.Length>2000)return;
    curiousUntil=DateTime.UtcNow.AddMilliseconds(1500);lastClip=text;clipItems.Remove(text);clipItems.Insert(0,text);if(clipItems.Count>15)clipItems.RemoveAt(15);if(page=="clipboard")Switch("clipboard");
   }catch{}
@@ -89,15 +98,21 @@ public partial class App {
  static void SavePins(){try{SafeWrite(PinPath(),json.Serialize(Pins()));}catch{error="Não consegui salvar os fixados no disco. Eles continuam até fechar o Tito.";ShowError();}}
  static void ClipboardPage(){
   ScrollViewer sc;var rows=Panel("Área de transferência",out sc,Btn("Limpar",()=>{clipItems.Clear();Switch("clipboard");},"Limpa o histórico; os fixados ficam"));
-  var search=new TextBox{Text=clipFilter,Background=B("#18FFFFFF"),Foreground=B(Theme.Text),CaretBrush=Brushes.White,BorderThickness=new Thickness(0),Padding=new Thickness(8,5,8,5),FontSize=12,ToolTip="Digite e aperte Enter para filtrar",Margin=new Thickness(0,0,0,6)};
-  search.KeyDown+=(s,e)=>{if(e.Key!=System.Windows.Input.Key.Enter)return;clipFilter=search.Text.Trim();Switch("clipboard");};rows.Children.Add(search);
+  var search=new TextBox{Text=clipFilter,Background=B("#18FFFFFF"),Foreground=B(Theme.Text),CaretBrush=Brushes.White,BorderThickness=new Thickness(0),Padding=new Thickness(8,5,8,5),FontSize=12,ToolTip="Digite para buscar no histórico e nos fixados",Margin=new Thickness(0,0,0,6)};
+  rows.Children.Add(search);
   Func<string,bool> match=t=>clipFilter==""||t.IndexOf(clipFilter,StringComparison.CurrentCultureIgnoreCase)>=0;
+  rows.Children.Add(ToggleRow("Pausar o histórico",clipPaused,v=>clipPaused=v));
+  var list=Stack();rows.Children.Add(list);
+  Action fill=()=>{list.Children.Clear();
   var pins=Pins().Where(match).ToList();var recent=clipItems.Where(t=>match(t)&&!Pins().Contains(t)).ToList();
-  if(pins.Count==0&&recent.Count==0){var empty=T(clipFilter==""?"Copie um texto e ele aparece aqui. O histórico fica só na memória; fixe (📌) o que quiser guardar.":"Nada encontrado.",13,"#BDBDC5");empty.TextWrapping=TextWrapping.Wrap;rows.Children.Add(empty);}
+  if(pins.Count==0&&recent.Count==0){var empty=T(clipFilter==""?"Copie um texto e ele aparece aqui. O histórico fica só na memória; fixe (📌) o que quiser guardar.":"Nada encontrado.",13,"#BDBDC5");empty.TextWrapping=TextWrapping.Wrap;list.Children.Add(empty);}
   foreach(string item in pins.Concat(recent)){string text=item;bool pinned=Pins().Contains(text);string line=text.Replace("\r"," ").Replace("\n"," ");
    var row=new DockPanel{Margin=new Thickness(0,1,0,1)};
    var pin=Btn(pinned?"✕":"📌",()=>{if(pinned)Pins().Remove(text);else{Pins().Remove(text);Pins().Insert(0,text);if(Pins().Count>30)Pins().RemoveAt(30);}SavePins();Switch("clipboard");},pinned?"Desafixar":"Fixar (salva no disco)");DockPanel.SetDock(pin,Dock.Right);row.Children.Add(pin);
-   var label=new TextBlock{Text=(pinned?"📌 ":"")+line,TextTrimming=TextTrimming.CharacterEllipsis};var b=Btn("",()=>{lastClip=text;Clipboard.SetText(text);celebrateUntil=DateTime.UtcNow.AddSeconds(2);},"Copiar de novo");b.Content=label;b.ToolTip=text.Length>400?text.Substring(0,400)+"…":text;b.HorizontalContentAlignment=HorizontalAlignment.Left;row.Children.Add(b);rows.Children.Add(row);}
+   var label=new TextBlock{Text=(pinned?"📌 ":"")+line,TextTrimming=TextTrimming.CharacterEllipsis};var b=Btn("",()=>{lastClip=text;Clipboard.SetText(text);celebrateUntil=DateTime.UtcNow.AddSeconds(2);},"Copiar de novo");b.Content=label;b.ToolTip=text.Length>400?text.Substring(0,400)+"…":text;b.HorizontalContentAlignment=HorizontalAlignment.Left;row.Children.Add(b);list.Children.Add(row);}
+  };
+  search.TextChanged+=(s,e)=>{clipFilter=search.Text.Trim();fill();};fill();
+  var note=T("Senhas de gerenciadores (1Password, Bitwarden, KeePass…) e itens marcados como sensíveis não entram. Sair do Tito apaga o histórico; só os fixados ficam.",10.5,Theme.Soft);note.TextWrapping=TextWrapping.Wrap;note.Margin=new Thickness(8,8,8,4);rows.Children.Add(note);
  }
  static List<string[]> AgendaEntries(){
   var list=new List<string[]>();try{if(File.Exists(AgendaPath()))foreach(string line in File.ReadAllLines(AgendaPath())){var p=line.Split(new[]{'|'},3);if(p.Length==3)list.Add(p);}}catch{}
@@ -167,6 +182,7 @@ public partial class App {
    string date,time,title;if(!ParseAgenda(add.Text,DateTime.Now,out date,out time,out title)){agendaError="Não entendi. Tente: 14:30 Reunião · amanhã 9h Dentista · 25/11 18h30 Jantar";Switch("agenda");return;}
    agendaError="";try{File.AppendAllText(AgendaPath(),date+"|"+time+"|"+title.Replace("|"," ")+"\n");}catch{agendaError="Não consegui salvar a agenda.";}celebrateUntil=DateTime.UtcNow.AddSeconds(2);Switch("agenda");};
   rows.Children.Add(add);
+  string sum=SummaryToday();if(sum!=null){var st=T(sum,12);st.TextWrapping=TextWrapping.Wrap;st.Margin=new Thickness(8,2,8,6);var sh=T("Resumo do dia",10.5,Theme.Muted);sh.Margin=new Thickness(8,6,8,0);rows.Children.Add(CardBox(new StackPanel{Children={sh,st}}));}
   if(agendaError!="")rows.Children.Add(T(agendaError,12,"#FF453A"));
   DateTime now=DateTime.Now;string today=now.ToString("yyyy-MM-dd");var upcoming=AgendaEntries().Where(p=>{var at=AgendaAt(p);return at!=DateTime.MinValue&&now-at<=TimeSpan.FromHours(24);}).Take(12).ToList();
   if(upcoming.Count==0)rows.Children.Add(T("Nada marcado. Crie um lembrete para não esquecer: digite “amanhã 9h Dentista” e Enter.",13,"#BDBDC5"));

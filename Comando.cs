@@ -36,6 +36,7 @@ public partial class App {
   if(Regex.IsMatch(t,@"^(?:tocar|pausar|play|pause)$",RegexOptions.IgnoreCase))add("Tocar / pausar mídia",()=>SendMedia("toggle"));
   if(Regex.IsMatch(t,@"^(?:próxima|proxima|next)$",RegexOptions.IgnoreCase))add("Próxima faixa",()=>SendMedia("next"));
   if(Regex.IsMatch(t,@"^(?:hoje|resumo|resumo do dia)$",RegexOptions.IgnoreCase))add(DaySummary(),()=>Switch("agenda"));
+  if(Regex.IsMatch(t,@"^resumo\s+agora$",RegexOptions.IgnoreCase))add("Gerar o resumo do dia agora",RunSummary);
   if((m=Regex.Match(t,@"^(?:buscar|procurar)\s+(.+)$",RegexOptions.IgnoreCase)).Success)foreach(var hit in LocalSearch(m.Groups[1].Value.Trim()))list.Add(hit);
   string low=t.ToLowerInvariant();
   if(low=="rotinas"||low=="editar rotinas")add("Editar rotinas (abre o arquivo)",EditRoutines);
@@ -71,6 +72,42 @@ public partial class App {
  static string DaySummary(){
   var now=DateTime.Now;var today=AgendaEntries().Where(p=>AgendaAt(p).Date==now.Date).ToList();var next=today.FirstOrDefault(p=>AgendaAt(p)>now);int late=today.Count(p=>AgendaAt(p)<=now);
   return "Hoje · "+(today.Count==0?"nada na agenda":today.Count+" na agenda")+(next!=null?" · próximo "+next[1]+" "+next[2]:"")+(late>0?" · "+late+" vencido(s)":"")+" · "+FocusTodayText().Replace("Hoje: ","");
+ }
+ // Resumo do dia: no horário escolhido (18h), a IA local resume agenda, foco e notas de hoje; sem IA, sai a versão simples.
+ static bool summaryOn=true,summaryBusy;static string summaryAt="18:00",summaryDay,summaryText="";
+ static string SummaryPath(){return Path.Combine(dataDir,"resumo.txt");}
+ static void SummaryLoad(){summaryDay="";summaryText="";try{if(File.Exists(SummaryPath())){var l=File.ReadAllText(SummaryPath()).Split(new[]{'\n'},2);summaryDay=l[0].Trim();summaryText=l.Length>1?l[1].Trim():"";}}catch{}}
+ static string SummaryToday(){if(summaryDay==null)SummaryLoad();return summaryDay==DateTime.Now.ToString("yyyy-MM-dd")&&summaryText!=""?summaryText:null;}
+ static void SaveSummary(string day,string text){summaryDay=day;summaryText=text;try{SafeWrite(SummaryPath(),day+"\n"+text);}catch{}}
+ static List<string> NotesToday(){var l=new List<string>();FlushNotes();for(int n=1;n<=NotePages();n++){try{if(File.GetLastWriteTime(NotesPath(n)).Date==DateTime.Now.Date&&new FileInfo(NotesPath(n)).Length>0)l.Add(NoteTitle(n));}catch{}}return l;}
+ static string SimpleSummary(){var n=NotesToday();return DaySummary()+(n.Count>0?" · notas de hoje: "+String.Join(", ",n):"");}
+ static string DayFacts(){
+  var now=DateTime.Now;var today=AgendaEntries().Where(p=>AgendaAt(p).Date==now.Date).ToList();var sb=new System.Text.StringBuilder();
+  sb.Append("Agenda de hoje: "+(today.Count==0?"nada":String.Join("; ",today.Select(p=>p[1]+" "+p[2]+(AgendaAt(p)>now?" (ainda pendente)":" (já passou)"))))+"\n");
+  sb.Append("Foco hoje: "+FocusTodayText().Replace("Hoje: ","").Replace(" de foco","")+"\n");
+  FlushNotes();int shown=0;for(int n=1;n<=NotePages()&&shown<3;n++){try{if(File.GetLastWriteTime(NotesPath(n)).Date!=now.Date)continue;string t=File.ReadAllText(NotesPath(n)).Trim();if(t.Length==0)continue;shown++;sb.Append("Nota mexida hoje: "+(t.Length>300?t.Substring(0,300):t)+"\n");}catch{}}
+  return sb.ToString();
+ }
+ static void SummaryTick(){
+  if(secondary||uiTest||!summaryOn||summaryBusy||doNotDisturb||contextHidden)return;
+  TimeSpan at;if(!TimeSpan.TryParse(summaryAt,out at))at=new TimeSpan(18,0,0);
+  if(summaryDay==null)SummaryLoad();if(DateTime.Now.TimeOfDay<at||summaryDay==DateTime.Now.ToString("yyyy-MM-dd"))return;
+  RunSummary();
+ }
+ static async void RunSummary(){
+  if(summaryBusy)return;summaryBusy=true;string day=DateTime.Now.ToString("yyyy-MM-dd"),text=null,source="";
+  try{
+   if(shareContext&&(IsOllama()||MotorReady())){
+    var msgs=new List<Dictionary<string,string>>{new Dictionary<string,string>{{"role","system"},{"content","Você é o Tito. Escreva em português do Brasil um resumo do dia do usuário em no máximo 4 linhas curtas, usando só os dados abaixo. Não invente nada e diga o que ficou pendente."}},new Dictionary<string,string>{{"role","user"},{"content",DayFacts()}}};
+    var task=IsOllama()?ChatStream(ExtPort(),OllamaName(),msgs,null):MotorChat(msgs);
+    if(await System.Threading.Tasks.Task.WhenAny(task,System.Threading.Tasks.Task.Delay(90000))==task){text=(await task).Trim();if(text.Length>0)source="IA local";}
+   }
+  }catch{}
+  if(String.IsNullOrEmpty(source))text=SimpleSummary();
+  summaryBusy=false;SaveSummary(day,text);
+  excitedUntil=DateTime.UtcNow.AddSeconds(4);
+  if(tray!=null)tray.ShowBalloonTip(8000,"Tito · Resumo do dia",text.Length>230?text.Substring(0,230)+"…":text,Forms.ToolTipIcon.Info);
+  Switch("agenda");Expand(true);
  }
  // Busca local: páginas de nota, agenda e itens fixados. Nada sai do PC.
  static List<KeyValuePair<string,Action>> LocalSearch(string term){

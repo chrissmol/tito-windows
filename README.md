@@ -90,6 +90,7 @@ Na aba Mídia, os olhos se transformam em sete barras que mostram o histórico r
 
 - Claude Code: o cartão do dashboard conta as sessões abertas (um arquivo por sessão em `Dados\sessions`, apagado no fim da sessão) e mostra "N aguardando você" quando alguma pede aprovação.
 
+- Atalho da caixa de comando configurável em Ajustes (Win+Espaço fica de fora: troca o idioma). Histórico da área de transferência com busca ao digitar, pausa e sem senhas de gerenciadores. Resumo do dia às 18h (horário em Ajustes; comando `resumo agora`).
 - Caixa de comando (Ctrl+Alt+Espaço): além de foco, nota, agenda e abrir, agora aceita `pausa 5`, `lembrar em 10 min texto`, `volume 40` e `não incomodar`.
 
 ## Laboratório
