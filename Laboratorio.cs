@@ -63,13 +63,20 @@ public partial class App {
    // Primeiro uso: cada passo desenha, e terminar grava o arquivo (não abre de novo).
    for(int i=0;i<tourSteps.Length;i++){tourStep=i;Switch("tour");Capture("guia-"+(i+1));}
    Need(!File.Exists(TourPath()),"guia não deveria marcar como visto antes do fim");TourEnd();Need(File.Exists(TourPath())&&page=="home","terminar o guia");
+   // Atalho, resumo do dia e gerenciadores de senha.
+   Need(IsSecretApp("KeePassXC")&&IsSecretApp("1Password")&&!IsSecretApp("notepad"),"gerenciador de senhas");
+   foreach(var hk in Hotkeys){uint hm,hv;Need(UInt32.TryParse(hk[2],out hm)&&UInt32.TryParse(hk[3],out hv),"atalho "+hk[0]);}
+   Need(!Hotkeys.Any(hk=>hk[2]=="8"&&hk[3]=="32"),"Win+Espaço troca o idioma do teclado");
+   File.WriteAllText(AgendaPath(),LabLine(now.Date.AddHours(23).AddMinutes(59),"Jantar")+"\n");summaryDay=null;
+   Need(SimpleSummary().Contains("Jantar"),"resumo simples sem a agenda");Need(SummaryToday()==null,"resumo de outro dia");
+   SaveSummary(now.ToString("yyyy-MM-dd"),"Teste");summaryDay=null;Need(SummaryToday()=="Teste","resumo não gravou");
    // Fotos: agenda (com vencido), notas, área de transferência e cada tema.
    foreach(string p in new[]{"agenda","notes","clipboard"}){Switch(p);Capture(p);}
    foreach(var r in themeData){themeId=r[0];ApplyTheme(true);Switch("home");Capture("theme-"+r[0]);}
    themeId="padrao";ApplyTheme(true);Switch("home");
    foreach(string f in Directory.GetFiles(tmp,"preview-*.png"))File.Copy(f,Path.Combine(real,Path.GetFileName(f)),true);
   }finally{
-   dataDir=real;agendaFired=null;notesPending=null;notesPage=1;doNotDisturb=dnd;focusDay="";
+   dataDir=real;summaryDay=null;agendaFired=null;notesPending=null;notesPage=1;doNotDisturb=dnd;focusDay="";
    try{Directory.Delete(tmp,true);}catch{}
   }
  }

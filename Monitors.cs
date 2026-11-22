@@ -69,8 +69,17 @@ public partial class App {
    if(msg==0x312&&wp.ToInt32()==0x7158){handled=true;CommandBox();}
    return IntPtr.Zero;});
   RegisterHotKey(hwnd,0x7157,0x3|0x4000,0x54); // Ctrl+Alt+T
-  RegisterHotKey(hwnd,0x7158,0x3|0x4000,0x20); // Ctrl+Alt+Espaço: caixa de comando
+  hotHwnd=hwnd;ApplyHotkey();
   w.Closed+=(s,e)=>{UnregisterHotKey(hwnd,0x7157);UnregisterHotKey(hwnd,0x7158);};
+ }
+ // Atalho da caixa de comando. Win+Espaço fica de fora: o Windows usa para trocar o idioma do teclado.
+ static readonly string[][] Hotkeys={new[]{"ctrl-alt-space","Ctrl+Alt+Espaço","3","32"},new[]{"ctrl-shift-space","Ctrl+Shift+Espaço","6","32"},new[]{"ctrl-alt-k","Ctrl+Alt+K","3","75"},new[]{"ctrl-alt-j","Ctrl+Alt+J","3","74"},new[]{"off","Desligado","0","0"}};
+ static string hotkeyKey="ctrl-alt-space";static IntPtr hotHwnd;
+ static string[] HotkeyDef(){return Hotkeys.FirstOrDefault(h=>h[0]==hotkeyKey)??Hotkeys[0];}
+ // Registra o atalho escolhido; false quando outro programa já usa a combinação.
+ static bool ApplyHotkey(){
+  if(hotHwnd==IntPtr.Zero)return true;UnregisterHotKey(hotHwnd,0x7158);var h=HotkeyDef();if(h[0]=="off")return true;
+  return RegisterHotKey(hotHwnd,0x7158,UInt32.Parse(h[2])|0x4000,UInt32.Parse(h[3]));
  }
  static Forms.ToolStripMenuItem MonitorsMenu(){
   var root=new Forms.ToolStripMenuItem("Telas (Ctrl+Alt+T abre onde está o mouse)");
@@ -89,7 +98,7 @@ public partial class App {
    var cap=T(MonitorLabel(i),10.5,Theme.Soft);cap.Margin=new Thickness(8,4,8,2);box.Children.Add(cap);
    box.Children.Add(ToggleRow("Mostrar Tito",!off.Contains(i),v=>SetMonitor(n,v)));
    box.Children.Add(ToggleRow("Ocultar em tela cheia",!fsOff.Contains(i),v=>SetFullscreenHide(n,v)));}
-  var hint=T("Ctrl+Alt+T abre o Tito na tela do mouse (ou religa, se estiver desligado).  Ctrl+Alt+Espaço abre a caixa de comando.",10.5,Theme.Soft);hint.TextWrapping=TextWrapping.Wrap;hint.Margin=new Thickness(8,4,8,4);box.Children.Add(hint);
+  var hint=T("Ctrl+Alt+T abre o Tito na tela do mouse (ou religa, se estiver desligado).  "+HotkeyDef()[1]+" abre a caixa de comando.",10.5,Theme.Soft);hint.TextWrapping=TextWrapping.Wrap;hint.Margin=new Thickness(8,4,8,4);box.Children.Add(hint);
   return CardBox(box);
  }
 }
