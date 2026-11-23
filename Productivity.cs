@@ -12,15 +12,17 @@ public partial class App {
  // Notes, clipboard history and a local agenda. Nothing here leaves the machine.
  static readonly List<string> clipItems=new List<string>();static string lastClip="";static TextBox notesBox;
  [System.Runtime.InteropServices.DllImport("kernel32.dll")] public static extern uint SetThreadExecutionState(uint flags);
- static bool keepAwake,batteryLow,batteryKnown,wasCharging;static DateTime curiousUntil,typingUntil,dizzyUntil,excitedUntil,loveUntil,winkUntil,agentBusyUntil,nextQuirk=DateTime.UtcNow.AddSeconds(10),quirkUntil;static Point quirkGaze;static bool agendaSoon,cpuHigh;static long cpuIdle,cpuTotal;static int cpuStreak;static DateTime cpuAt;static DateTime welcomeUntil=DateTime.UtcNow.AddSeconds(3),chatDoneUntil;static bool chatWasBusy;
+ static bool keepAwake,batteryLow,batteryKnown,wasCharging;static DateTime curiousUntil,typingUntil,dizzyUntil,excitedUntil,loveUntil,winkUntil,agentBusyUntil,nextQuirk=DateTime.UtcNow.AddSeconds(10),quirkUntil;static Point quirkGaze;static bool agendaSoon,cpuHigh,memHigh,pcOn=true;static int cpuLimit=92,memLimit=90,battLimit=30,cpuPct,memPct;static long cpuIdle,cpuTotal;static int cpuStreak;static DateTime cpuAt;static DateTime welcomeUntil=DateTime.UtcNow.AddSeconds(3),chatDoneUntil;static bool chatWasBusy;
  [System.Runtime.InteropServices.DllImport("kernel32.dll")] static extern bool GetSystemTimes(out long idle,out long kernel,out long user);
- // CPU quase cheia por ~9 s: Tito fica preocupado. Uma leitura barata a cada 3 s.
+ // CPU acima do limite por ~9 s ou memória acima do limite: Tito fica preocupado e a cápsula mostra o valor. Uma leitura barata a cada 3 s, no mesmo tick de sempre.
  static void CpuTick(){
   var now=DateTime.UtcNow;if(now-cpuAt<TimeSpan.FromSeconds(3))return;cpuAt=now;
   long i,k,u;if(!GetSystemTimes(out i,out k,out u))return;long total=k+u;
-  if(cpuTotal>0&&total>cpuTotal){double busy=1-(double)(i-cpuIdle)/(total-cpuTotal);cpuStreak=busy>=.92?cpuStreak+1:0;cpuHigh=cpuStreak>=3;}
+  if(cpuTotal>0&&total>cpuTotal){cpuPct=(int)Math.Round((1-(double)(i-cpuIdle)/(total-cpuTotal))*100);cpuStreak=cpuPct>=cpuLimit?cpuStreak+1:0;cpuHigh=pcOn&&cpuStreak>=3;}
   cpuIdle=i;cpuTotal=total;
+  var ms=new MemStatus();if(GlobalMemoryStatusEx(ms)){memPct=(int)ms.dwMemoryLoad;memHigh=pcOn&&memPct>=memLimit;}
  }
+ static string PcAlert(out string color){color=Theme.Warn;return !pcOn?null:cpuHigh?"CPU "+cpuPct+"%":memHigh?"RAM "+memPct+"%":null;}
  static readonly Queue<DateTime> taps=new Queue<DateTime>();
  // Tito reacts to taps: a giggle, and dizzy after five quick ones.
  static void MascotTap(){
@@ -30,12 +32,12 @@ public partial class App {
  static void SetKeepAwake(bool on){keepAwake=on;SetThreadExecutionState(on?0x80000003u:0x80000000u);}
  // Resting-pill battery: only when charging or low; desktops without a battery return null.
  static string BatteryText(out string color){
-  color=null;var ps=System.Windows.Forms.SystemInformation.PowerStatus;
+  color=null;if(!pcOn){batteryLow=false;return null;}var ps=System.Windows.Forms.SystemInformation.PowerStatus;
   if((ps.BatteryChargeStatus&(System.Windows.Forms.BatteryChargeStatus.NoSystemBattery|System.Windows.Forms.BatteryChargeStatus.Unknown))!=0)return null;
   int pct=(int)Math.Round(ps.BatteryLifePercent*100);bool charging=ps.PowerLineStatus==System.Windows.Forms.PowerLineStatus.Online;
-  batteryLow=!charging&&pct<=20;if(batteryKnown&&charging&&!wasCharging)loveUntil=DateTime.UtcNow.AddSeconds(2.5);batteryKnown=true;wasCharging=charging;
+  int bad=Math.Min(20,battLimit);batteryLow=!charging&&pct<=bad;if(batteryKnown&&charging&&!wasCharging)loveUntil=DateTime.UtcNow.AddSeconds(2.5);batteryKnown=true;wasCharging=charging;
   if(charging&&pct<100){color=Theme.Ok;return "⚡ "+pct+"%";}
-  if(!charging&&pct<=30){color=pct<=20?Theme.Bad:"#FFB000";return pct+"%";}
+  if(!charging&&pct<=battLimit){color=pct<=bad?Theme.Bad:"#FFB000";return pct+"%";}
   return null;
  }
  // Pomodoro: foco 25 min, pausa 5 (15 a cada 4 ciclos); cada fim vai para focus-log.txt.
@@ -186,9 +188,9 @@ public partial class App {
   rows.Children.Add(add);
   string sum=SummaryToday();if(sum!=null){var st=T(sum,12);st.TextWrapping=TextWrapping.Wrap;st.Margin=new Thickness(8,2,8,6);var sh=T("Resumo do dia",10.5,Theme.Muted);sh.Margin=new Thickness(8,6,8,0);rows.Children.Add(CardBox(new StackPanel{Children={sh,st}}));}
   if(agendaError!="")rows.Children.Add(T(agendaError,12,"#FF453A"));
-  DateTime now=DateTime.Now;string today=now.ToString("yyyy-MM-dd");var upcoming=AgendaEntries().Where(p=>{var at=AgendaAt(p);return at!=DateTime.MinValue&&now-at<=TimeSpan.FromHours(p.Length==4?1:24);}).Take(20).ToList();
+  DateTime now=DateTime.Now;string today=now.ToString("yyyy-MM-dd");var upcoming=AgendaEntries().Where(p=>{var at=AgendaAt(p);if(p.Length==4&&p[1]=="")return String.CompareOrdinal(p[0],today)>=0;return at!=DateTime.MinValue&&now-at<=TimeSpan.FromHours(p.Length==4?1:24);}).Take(20).ToList();
   if(upcoming.Count==0)rows.Children.Add(T("Nada marcado. Crie um lembrete para não esquecer: digite “amanhã 9h Dentista” e Enter.",13,"#BDBDC5"));
-  foreach(var p in upcoming){var row=Stack(Orientation.Horizontal);bool google=p.Length==4;bool overdue=!google&&AgendaAt(p)<=now;string when=p[0]==today?p[1]:DateTime.ParseExact(p[0],"yyyy-MM-dd",CultureInfo.InvariantCulture).ToString("dd/MM",CultureInfo.InvariantCulture)+" "+p[1];
+  foreach(var p in upcoming){var row=Stack(Orientation.Horizontal);bool google=p.Length==4;bool overdue=!google&&AgendaAt(p)<=now;string when=p[1]==""?(p[0]==today?"Dia todo":DateTime.ParseExact(p[0],"yyyy-MM-dd",CultureInfo.InvariantCulture).ToString("dd/MM",CultureInfo.InvariantCulture)):p[0]==today?p[1]:DateTime.ParseExact(p[0],"yyyy-MM-dd",CultureInfo.InvariantCulture).ToString("dd/MM",CultureInfo.InvariantCulture)+" "+p[1];
    var t=T(when,12,overdue?Theme.Warn:p[0]==today?"#FFB36B":Theme.Muted);t.Width=84;row.Children.Add(t);var title=T(p[2],13);title.MaxWidth=330;title.TextTrimming=TextTrimming.CharacterEllipsis;row.Children.Add(title);
    var entry=p;
    if(google){var tag=T("Google",10.5,Theme.Soft);tag.Margin=new Thickness(8,2,0,0);row.Children.Add(tag);row.Margin=new Thickness(0,3,0,3);rows.Children.Add(row);continue;}

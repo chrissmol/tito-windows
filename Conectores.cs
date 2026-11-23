@@ -111,7 +111,7 @@ public partial class App {
   }
   return res;
  }
- // Eventos de ontem a daqui a 15 dias como {data, hora, título, "cal"}. shortcut: eventos de dia inteiro ficam de fora (aniversários e feriados não são lembretes com hora).
+ // Eventos de ontem a daqui a 15 dias como {data, hora, título, "cal"}. Dia inteiro vem com hora vazia (sem lembrete); shortcut: evento de vários dias aparece só no primeiro dia.
  static List<string[]> ParseIcs(string text,DateTime now){
   var evs=new List<IcsEv>();IcsEv cur=null;
   string flat=Regex.Replace((text??"").Replace("\r\n","\n").Replace("\r","\n"),"\n[ \t]","");
@@ -136,14 +136,14 @@ public partial class App {
   var skip=new HashSet<string>();foreach(var e in evs)if(e.RecId.HasValue)skip.Add(e.Uid+"|"+e.RecId.Value.ToString("s",CultureInfo.InvariantCulture));
   DateTime lo=now.Date.AddDays(-1),hi=now.Date.AddDays(15);var list=new List<string[]>();
   foreach(var e in evs){
-   if(e.Cancelled||e.AllDay)continue;
+   if(e.Cancelled)continue;
    var occ=e.RecId.HasValue||e.Rule==""?new List<DateTime>{e.Start}:IcsOccurrences(e,hi);
    foreach(var at in occ){
     if(at<lo||at>=hi)continue;
     if(!e.RecId.HasValue&&skip.Contains(e.Uid+"|"+at.ToString("s",CultureInfo.InvariantCulture)))continue;
     DateTime when=at;if(e.Ex.Any(x=>x==when))continue;
     string title=e.Title.Replace("|"," ").Trim();if(title.Length==0)title="(sem título)";if(title.Length>80)title=title.Substring(0,80)+"…";
-    list.Add(new[]{at.ToString("yyyy-MM-dd",CultureInfo.InvariantCulture),at.ToString("HH:mm",CultureInfo.InvariantCulture),title,"cal"});
+    list.Add(new[]{at.ToString("yyyy-MM-dd",CultureInfo.InvariantCulture),e.AllDay?"":at.ToString("HH:mm",CultureInfo.InvariantCulture),title,"cal"});
    }
   }
   return list.OrderBy(p=>p[0]+p[1]).Take(300).ToList();
@@ -220,7 +220,7 @@ public partial class App {
   box.Children.Add(LinkRow("Atualizar agora",()=>CalSync(true)));
   box.Children.Add(ToggleRow("Trocar de janela pela caixa de comando",winOn,v=>{winOn=v;SavePrefs();}));
   box.Children.Add(ToggleRow("Olhos reagem a avisos (Outlook, Teams…)",notifOn,v=>{notifOn=v;SavePrefs();}));
-  var note=T("Eventos: só leitura, baixados do seu link e guardados em Dados\\calendario-cache.ics; eventos de dia inteiro não aparecem. Janelas: a lista fica só neste PC. Avisos: o Tito percebe quando o app pisca na barra de tarefas e não lê mensagens."+(notifLast!=""?" Último aviso: "+notifLast+".":""),10.5,Theme.Soft);note.TextWrapping=TextWrapping.Wrap;note.Margin=new Thickness(8,4,8,4);box.Children.Add(note);
+  var note=T("Eventos: só leitura, baixados do seu link e guardados em Dados\\calendario-cache.ics; eventos de dia inteiro aparecem sem lembrete. Janelas: a lista fica só neste PC. Avisos: o Tito percebe quando o app pisca na barra de tarefas e não lê mensagens."+(notifLast!=""?" Último aviso: "+notifLast+".":""),10.5,Theme.Soft);note.TextWrapping=TextWrapping.Wrap;note.Margin=new Thickness(8,4,8,4);box.Children.Add(note);
   return CardBox(box);
  }
 
@@ -244,7 +244,7 @@ public partial class App {
    Need(calEvents.Any(p=>p[2]=="Reunião, UTC"&&p[1]=="15:00"),"evento em UTC deve virar hora local");
    Need(calEvents.Count(p=>p[2]=="Semanal")==2,"repetição semanal com exceção (esperado: hoje e daqui a 14 dias)");
    Need(calEvents.Count(p=>p[2]=="Diário")==2,"repetição diária com COUNT");
-   Need(!calEvents.Any(p=>p[2]=="Cancelado"||p[2]=="Feriado"),"cancelado e dia inteiro ficam de fora");
+   Need(!calEvents.Any(p=>p[2]=="Cancelado"),"cancelado fica de fora");Need(calEvents.Any(p=>p[2]=="Feriado"&&p[1]==""),"dia inteiro aparece sem hora");
    Need(calEvents.All(p=>p.Length==4&&p[3]=="cal"),"eventos do Google precisam vir marcados");
    File.WriteAllText(AgendaPath(),LabLine(today.AddHours(23).AddMinutes(59),"Jantar")+"\n");
    Need(AgendaEntries().Any(p=>p[2]=="Planejamento trimestral")&&AgendaEntries().Any(p=>p[2]=="Jantar"),"agenda deve juntar lembretes e eventos");
@@ -253,6 +253,7 @@ public partial class App {
    int fired=Fired().Count;lastAgendaCheck=DateTime.MinValue;AgendaReminderTick();Need(Fired().Count==fired,"evento do Google que começou há 20 min não deve avisar");
    calOn=false;Need(!AgendaEntries().Any(p=>p.Length==4),"desligado, os eventos somem");calOn=true;
    Switch("agenda");Capture("agenda-google");Switch("settings");Capture("settings-conectores");
+   {bool kp=pcOn,kc=cpuHigh,km=memHigh;int pc=cpuPct,pm=memPct;string h;pcOn=true;cpuHigh=true;cpuPct=97;memHigh=false;Need(PcAlert(out h)=="CPU 97%","alerta de CPU");cpuHigh=false;memHigh=true;memPct=91;Need(PcAlert(out h)=="RAM 91%","alerta de memória");pcOn=false;Need(PcAlert(out h)==null&&BatteryText(out h)==null,"desligado, sem alerta");pcOn=kp;cpuHigh=kc;memHigh=km;cpuPct=pc;memPct=pm;}
    // Janelas.
    var wl=new List<WinInfo>{new WinInfo{Title="Caixa de Entrada - Outlook",Proc="OUTLOOK"},new WinInfo{Title="Docs - Google Chrome",Proc="chrome"}};
    Need(WinFilter(wl,"outlook",false).Count==1&&WinFilter(wl,"chr",true).Count==1&&WinFilter(wl,"google",true).Count==0&&WinFilter(wl,"google",false).Count==1,"filtro de janelas");
