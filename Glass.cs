@@ -93,7 +93,7 @@ public partial class App {
  static void Load(){useSystem=false;player.Open(new Uri(tracks[track]));player.Play();playing=true;Switch("music");}
  static void Next(int delta){if(tracks.Length==0){Choose();return;}track=(track+delta+tracks.Length)%tracks.Length;Load();}
  static void OldAgent(){
-  var panel=Stack();view.Children.Add(panel);panel.Children.Add(T("✳  Claude Code",25));
+  ScrollViewer sc;var panel=Panel("Claude Code",out sc);
   var sub=T("Integração ainda não conectada",12,"#D5C8C1");sub.Margin=new Thickness(0,9,0,12);panel.Children.Add(sub);
   var desc=T("O vídeo mostra o acompanhamento do agente.\nPara exibir tarefas reais, precisamos conectar os eventos\ndo Claude Code instalado neste computador.",13,"#C9BDB7");desc.LineHeight=21;panel.Children.Add(desc);
  }

@@ -57,7 +57,7 @@ public partial class App {
   chatMessages=Stack();chatScroll=new ScrollViewer{Content=chatMessages,VerticalScrollBarVisibility=ScrollBarVisibility.Auto};Grid.SetRow(chatScroll,1);layout.Children.Add(chatScroll);
   if(conversation.Count==0){chatMessages.Children.Add(T("ROBO",9,"#C1B5CC"));var welcome=T("O que falta para hoje?",21);welcome.FontWeight=FontWeights.SemiBold;welcome.Margin=new Thickness(0,13,0,7);chatMessages.Children.Add(welcome);chatMessages.Children.Add(T(MotorStatusText(),11,"#BDB4C7"));}else foreach(var message in conversation)AddChatBubble(message["content"],message["role"]=="user");
   var entry=new Grid{Margin=new Thickness(0,9,0,0)};entry.ColumnDefinitions.Add(new ColumnDefinition());entry.ColumnDefinitions.Add(new ColumnDefinition{Width=GridLength.Auto});Grid.SetRow(entry,2);layout.Children.Add(entry);
-  chatInput=new TextBox{Background=Brushes.Transparent,Foreground=B("#F2ECE7"),BorderBrush=B("#25FFFFFF"),BorderThickness=new Thickness(0,0,0,1),Padding=new Thickness(0,5,8,5),FontSize=12,ToolTip="Mensagem para o Robo"};chatInput.KeyDown+=(s,e)=>{if(e.Key==Key.Enter){SendChat();e.Handled=true;}};entry.Children.Add(chatInput);
+  chatInput=new TextBox{Tag="Escreva uma mensagem…",ToolTip="Mensagem para o Robo"};chatInput.KeyDown+=(s,e)=>{if(e.Key==Key.Enter){SendChat();e.Handled=true;}};entry.Children.Add(chatInput);
   var send=Btn("↑",SendChat,"Enviar");send.Width=29;send.Height=29;send.Padding=new Thickness(0);send.Background=B("#F5ECEA");send.Foreground=B("#28202E");Grid.SetColumn(send,1);entry.Children.Add(send);
  }
  static TextBlock AddChatBubble(string message,bool user){

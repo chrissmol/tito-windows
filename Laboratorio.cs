@@ -3,10 +3,13 @@ using System.IO;
 using System.Linq;
 using System.Globalization;
 using System.Windows;
+using System.Windows.Controls;
 namespace Tito {
 public partial class App {
  // Laboratório: confere a lógica (lembretes, agenda, notas, foco) e tira fotos de cada tela e tema.
  // Roda numa pasta temporária: nunca toca nas notas e lembretes reais.
+
+ static int BareFields(DependencyObject d){int n=0;var tb=d as TextBox;if(tb!=null&&String.IsNullOrEmpty(tb.Tag as string))n++;foreach(object c in LogicalTreeHelper.GetChildren(d)){var dc=c as DependencyObject;if(dc!=null)n+=BareFields(dc);}return n;}
  static void Need(bool ok,string what){if(!ok)throw new Exception("Laboratório: "+what);}
  static string LabLine(DateTime d,string title){return d.ToString("yyyy-MM-dd",CultureInfo.InvariantCulture)+"|"+d.ToString("HH:mm",CultureInfo.InvariantCulture)+"|"+title;}
  static void LabChecks(){
@@ -73,6 +76,9 @@ public partial class App {
    ConnectChecks(now);
    // Fotos: agenda (com vencido), notas, área de transferência e cada tema.
    foreach(string p in new[]{"agenda","notes","clipboard"}){Switch(p);Capture(p);}
+   // Padrão visual: toda tela é fotografada e nenhum campo de texto pode ficar sem texto de exemplo (Tag).
+   foreach(string p in new[]{"home","music","focus","ia","robo","agenda","notes","clipboard","shelf","audio","settings"}){Switch(p);Capture("padrao-"+p);Need(BareFields(view)==0,"campo sem texto de exemplo na tela "+p);}
+   ReceiveDrop(new DataObject(DataFormats.FileDrop,new[]{fx}));flowTimer.Stop();flowState=3;flowTo="";flowSubject="";flowBody="";Switch("shelf");Capture("padrao-email-vazio");Need(BareFields(view)==0,"campo sem texto de exemplo no e-mail");flowState=0;flowItem=null;shelf.Clear();
    foreach(var r in themeData){themeId=r[0];ApplyTheme(true);Switch("home");Capture("theme-"+r[0]);}
    themeId="padrao";ApplyTheme(true);Switch("home");
    foreach(string f in Directory.GetFiles(tmp,"preview-*.png"))File.Copy(f,Path.Combine(real,Path.GetFileName(f)),true);

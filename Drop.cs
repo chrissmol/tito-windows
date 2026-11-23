@@ -154,14 +154,10 @@ public partial class App {
   flowResult=ok?"Rascunho aberto no Outlook com o arquivo anexado. É só conferir e enviar.":"Abri o seu e-mail. O arquivo está selecionado na pasta: arraste para a mensagem.";
   flowState=4;celebrateUntil=DateTime.UtcNow.AddSeconds(2.5);Switch("shelf");
  }
- static TextBox FlowField(string hint,string value,Action<string> set,double height,bool multi){
-  var box=new TextBox{Text=value,Background=B("#14FFFFFF"),Foreground=B(Theme.Text),CaretBrush=Brushes.White,BorderThickness=new Thickness(0),Padding=new Thickness(10,5,10,5),FontSize=12,Height=height,Margin=new Thickness(4,0,4,5),VerticalContentAlignment=VerticalAlignment.Center,AcceptsReturn=multi,TextWrapping=multi?TextWrapping.Wrap:TextWrapping.NoWrap,ToolTip=hint};
-  System.Windows.Automation.AutomationProperties.SetName(box,hint);box.TextChanged+=(s,e)=>set(box.Text);return box;
- }
  static UIElement FlowCard(){
   if(flowItem==null||flowState==0||!shelf.Contains(flowItem))return null;
   var box=Stack();flowBar=null;flowLabel=null;
-  var head=T(flowItem.Name,13);head.FontWeight=FontWeights.SemiBold;head.TextTrimming=TextTrimming.CharacterEllipsis;head.Margin=new Thickness(8,4,8,2);head.MaxWidth=480;head.HorizontalAlignment=HorizontalAlignment.Left;if(flowState!=3)box.Children.Add(head);
+  var head=T(flowItem.Name,13);head.FontWeight=FontWeights.SemiBold;head.TextTrimming=TextTrimming.CharacterEllipsis;head.Margin=new Thickness(8,4,8,2);head.MaxWidth=480;head.HorizontalAlignment=HorizontalAlignment.Left;if(flowState!=3)box.Children.Add(head);else{var file=T("Anexo: "+flowItem.Name,Theme.Caption,Theme.Muted);file.TextTrimming=TextTrimming.CharacterEllipsis;file.MaxWidth=480;file.HorizontalAlignment=HorizontalAlignment.Left;file.Margin=new Thickness(8,4,8,8);box.Children.Add(file);}
   if(flowState==1){
    var sub=T("Lendo o arquivo…",11,Theme.Soft);sub.Margin=new Thickness(8,0,0,6);box.Children.Add(sub);
    var track=new Grid{Width=300,Height=4,HorizontalAlignment=HorizontalAlignment.Left,Margin=new Thickness(8,0,0,4)};track.Children.Add(new Border{CornerRadius=new CornerRadius(2),Background=B("#26FFFFFF")});
@@ -171,8 +167,11 @@ public partial class App {
    var sub=T("Pronto. O que você quer fazer?",11,Theme.Soft);sub.Margin=new Thickness(8,0,0,6);box.Children.Add(sub);
    var row=Stack(Orientation.Horizontal);row.Margin=new Thickness(2,0,0,4);row.Children.Add(Btn("Perguntar sobre ele",FlowAsk,"Leva o arquivo para o chat; só vai para a IA quando você apertar Enter"));row.Children.Add(Btn("Enviar por e-mail",()=>{flowState=3;Switch("shelf");}));row.Children.Add(Btn("Fechar",()=>{flowState=0;Switch("shelf");}));box.Children.Add(row);
   }else if(flowState==3){
-   box.Children.Add(FlowField("Para",flowTo,v=>flowTo=v,28,false));box.Children.Add(FlowField("Assunto",flowSubject,v=>flowSubject=v,28,false));box.Children.Add(FlowField("Mensagem",flowBody,v=>flowBody=v,28,false));
-   var row=Stack(Orientation.Horizontal);row.Margin=new Thickness(2,0,0,4);row.Children.Add(PillButton("Enviar",()=>FlowSend()));row.Children.Add(Btn("Cancelar",()=>{flowState=2;Switch("shelf");}));box.Children.Add(row);
+   var two=new Grid{Margin=new Thickness(4,0,4,0)};two.ColumnDefinitions.Add(new ColumnDefinition());two.ColumnDefinitions.Add(new ColumnDefinition());
+   var to=Field("Para","nome@empresa.com",flowTo,v=>flowTo=v,34,false);to.Margin=new Thickness(0,0,4,6);var subject=Field("Assunto","Sobre o arquivo",flowSubject,v=>flowSubject=v,34,false);subject.Margin=new Thickness(4,0,0,6);Grid.SetColumn(subject,1);two.Children.Add(to);two.Children.Add(subject);box.Children.Add(two);
+   var last=new Grid{Margin=new Thickness(4,0,4,4)};last.ColumnDefinitions.Add(new ColumnDefinition());last.ColumnDefinitions.Add(new ColumnDefinition{Width=GridLength.Auto});
+   var msg=Field("Mensagem","Escreva uma mensagem (opcional)",flowBody,v=>flowBody=v,34,false);last.Children.Add(msg);
+   var row=Stack(Orientation.Horizontal);row.VerticalAlignment=VerticalAlignment.Bottom;row.Margin=new Thickness(8,0,0,0);row.Children.Add(Btn("Cancelar",()=>{flowState=2;Switch("shelf");}));row.Children.Add(PillButton("Enviar",()=>FlowSend()));Grid.SetColumn(row,1);last.Children.Add(row);box.Children.Add(last);
   }else{
    var done=T(flowResult,12,Theme.Ok);done.TextWrapping=TextWrapping.Wrap;done.Margin=new Thickness(8,0,8,6);box.Children.Add(done);
    var row=Stack(Orientation.Horizontal);row.Margin=new Thickness(2,0,0,4);row.Children.Add(Btn("Fechar",()=>{flowState=0;Switch("shelf");}));box.Children.Add(row);

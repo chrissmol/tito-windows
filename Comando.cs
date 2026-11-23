@@ -124,7 +124,7 @@ public partial class App {
  }
  static void CommandBox(){
   if(cmdWin!=null){cmdWin.Close();return;}
-  var box=new TextBox{Background=Brushes.Transparent,Foreground=B("#FFF8F6"),CaretBrush=Brushes.White,BorderThickness=new Thickness(0),FontSize=18,Padding=new Thickness(12,10,12,10),ToolTip="foco 25 · pausa 5 · nota texto · lembrar amanhã 9h dentista · lembrar em 10 min texto · buscar texto · hoje · volume 40 · não incomodar · abrir notepad · ir para outlook · notas"};
+  var box=new TextBox{Background=Brushes.Transparent,Foreground=B("#FFF8F6"),CaretBrush=Brushes.White,BorderThickness=new Thickness(0),FontSize=18,Padding=new Thickness(12,10,12,10),Tag="Digite um comando…",ToolTip="foco 25 · pausa 5 · nota texto · lembrar amanhã 9h dentista · lembrar em 10 min texto · buscar texto · hoje · volume 40 · não incomodar · abrir notepad · ir para outlook · notas"};
   var rows=Stack();var hint=T("hoje  ·  foco 25  ·  nota …  ·  lembrar amanhã 9h …  ·  buscar …  ·  rotinas  ·  abrir …  ·  ir para …",11,"#8E8892");hint.TextWrapping=TextWrapping.Wrap;hint.Margin=new Thickness(14,0,14,10);
   var items=new List<KeyValuePair<string,Action>>();int sel=0;
   Action refresh=()=>{items=CommandMatches(box.Text);if(sel>=items.Count)sel=0;rows.Children.Clear();
@@ -133,7 +133,7 @@ public partial class App {
   var stack=Stack();stack.Children.Add(box);stack.Children.Add(rows);stack.Children.Add(hint);
   cmdWin=new Window{WindowStyle=WindowStyle.None,AllowsTransparency=true,Background=Brushes.Transparent,Topmost=true,ShowInTaskbar=false,ResizeMode=ResizeMode.NoResize,Width=560,SizeToContent=SizeToContent.Height,Opacity=0,FontFamily=w.FontFamily,
    Content=new Border{CornerRadius=new CornerRadius(18),Background=B("#F2201E24"),BorderBrush=B("#33FFFFFF"),BorderThickness=new Thickness(1),Margin=new Thickness(8),Child=stack}};
-  var win=cmdWin;
+  var win=cmdWin;win.Resources.MergedDictionaries.Add(sharedStyles);Crisp(win);
   box.TextChanged+=(s,e)=>{sel=0;refresh();};
   box.PreviewKeyDown+=(s,e)=>{var k=e.Key;
    if(k==System.Windows.Input.Key.Escape){win.Close();e.Handled=true;}
