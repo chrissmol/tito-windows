@@ -51,6 +51,19 @@ public partial class App {
   return CardBox(box);
  }
  // Atalho da caixa de comando e horário do resumo do dia.
+ static UIElement LimitBox(string label,int[] opts,int cur,Action<int> set){
+  var c=new ComboBox{Height=28,Margin=new Thickness(4,0,4,6)};foreach(int o in opts)c.Items.Add(new ComboBoxItem{Content=label+" "+o+"%",Tag=o});
+  c.SelectedIndex=Math.Max(0,Array.IndexOf(opts,cur));c.SelectionChanged+=(s,e)=>{var it=c.SelectedItem as ComboBoxItem;if(it!=null){set((int)it.Tag);SavePrefs();}};return c;
+ }
+ static UIElement PcCard(){
+  var box=Stack();var title=T("Uso do PC na cápsula",12,Theme.Heading);title.FontWeight=FontWeights.SemiBold;title.Margin=new Thickness(8,6,0,6);box.Children.Add(title);
+  box.Children.Add(ToggleRow("Mostrar CPU, memória e bateria",pcOn,v=>{pcOn=v;if(!v){cpuHigh=memHigh=false;}SavePrefs();}));
+  box.Children.Add(LimitBox("CPU a partir de",new[]{80,85,90,92,95},cpuLimit,v=>cpuLimit=v));
+  box.Children.Add(LimitBox("Memória a partir de",new[]{75,80,85,90,95},memLimit,v=>memLimit=v));
+  box.Children.Add(LimitBox("Bateria até",new[]{15,20,30,40},battLimit,v=>battLimit=v));
+  var note=T("A cápsula só mostra quando passa do limite. CPU precisa ficar alta por uns 9 s. Com a bateria baixa os olhos ficam cansados.",10.5,Theme.Soft);note.TextWrapping=TextWrapping.Wrap;note.Margin=new Thickness(8,4,8,4);box.Children.Add(note);
+  return CardBox(box);
+ }
  static UIElement ShortcutCard(){
   var box=Stack();var title=T("Atalho e resumo do dia",12,Theme.Heading);title.FontWeight=FontWeights.SemiBold;title.Margin=new Thickness(8,6,0,6);box.Children.Add(title);
   var keys=new ComboBox{Height=28,Margin=new Thickness(4,0,4,6),ToolTip="Atalho que abre a caixa de comando"};foreach(var h in Hotkeys)keys.Items.Add(new ComboBoxItem{Content="Caixa de comando · "+h[1],Tag=h[0]});keys.SelectedIndex=Math.Max(0,Array.IndexOf(Hotkeys,HotkeyDef()));
@@ -70,7 +83,7 @@ public partial class App {
   var left=Stack();left.Margin=new Thickness(0,0,5,0);
   var switches=Stack();switches.Children.Add(ToggleRow("Não incomodar",doNotDisturb,v=>doNotDisturb=v));switches.Children.Add(ToggleRow("Iniciar com o Windows",AutostartOn(),SetAutostart));switches.Children.Add(ToggleRow("Manter acordado",keepAwake,SetKeepAwake));left.Children.Add(CardBox(switches));
   var open=Stack();open.Children.Add(ToggleRow("Abrir ao passar o mouse",!clickOnly,v=>{clickOnly=!v;SavePrefs();}));open.Children.Add(ToggleRow("Fixar aberto",pinOpen,v=>{pinOpen=v;SavePrefs();}));left.Children.Add(CardBox(open));
-  left.Children.Add(PrivacyCard());left.Children.Add(ShortcutCard());left.Children.Add(ConnectCard());
+  left.Children.Add(PrivacyCard());left.Children.Add(ShortcutCard());left.Children.Add(PcCard());left.Children.Add(ConnectCard());
   var links=Stack();links.Children.Add(LinkRow("Prateleira",()=>Switch("shelf")));links.Children.Add(LinkRow("Rever apresentação",TourStart));links.Children.Add(LinkRow("Editar rotinas",EditRoutines));links.Children.Add(LinkRow("Áudio",()=>Switch("audio")));links.Children.Add(LinkRow("Conectar Claude",()=>Switch("agent")));left.Children.Add(CardBox(links));left.Children.Add(MonitorsCard());
   var right=Stack();right.Margin=new Thickness(5,0,0,0);Grid.SetColumn(right,1);
   var robo=Stack();var title=T("Robo · IA local",12,Theme.Heading);title.FontWeight=FontWeights.SemiBold;title.Margin=new Thickness(8,6,0,6);robo.Children.Add(title);
