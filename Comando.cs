@@ -42,7 +42,11 @@ public partial class App {
   if(low=="rotinas"||low=="editar rotinas")add("Editar rotinas (abre o arquivo)",EditRoutines);
   if(low.Length>=3)foreach(var r in Routines())if(r[0].ToLowerInvariant().StartsWith(low)){string steps=r[1];add("Rotina · "+r[0]+" ("+steps+")",()=>RunRoutine(steps));}
   foreach(var p in cmdPages)if(p[1].StartsWith(low)){string target=p[0];add("Abrir página: "+p[1],()=>Switch(target));}
-  if((m=Regex.Match(t,@"^(?:abrir|open)\s+(.+)$",RegexOptions.IgnoreCase)).Success){string target=m.Groups[1].Value.Trim();add("Aplicativo · abrir "+target,()=>CmdOpen(target));}
+  if((m=Regex.Match(t,@"^(?:ir\s+(?:para|pra|pro|a|ao)|alternar(?:\s+para)?|trocar\s+para|janela|go\s+to|switch\s+to)\s+(.+)$",RegexOptions.IgnoreCase)).Success)list.AddRange(WindowCommands(m.Groups[1].Value.Trim()));
+  if(Regex.IsMatch(t,@"^(?:janelas|windows)$",RegexOptions.IgnoreCase))list.AddRange(WindowCommands(""));
+  if((m=Regex.Match(t,@"^(?:abrir|open)\s+(.+)$",RegexOptions.IgnoreCase)).Success){string target=m.Groups[1].Value.Trim();
+   if(winOn){var open=WinFilter(OpenWindows(),target,true);if(open.Count>0){var first=open[0];add("Ir para · "+WinLabel(first)+" (já aberto)",()=>FocusWindow(first.H));}}
+   add("Aplicativo · abrir "+target,()=>CmdOpen(target));}
   else if(Regex.IsMatch(t,@"^https?://",RegexOptions.IgnoreCase))add("Link · abrir "+t,()=>CmdOpen(t));
   else if(list.Count==0){add("Perguntar ao Tito: "+t,()=>{chatDraft=t;Switch("robo");if(chatInput!=null){chatInput.Text=t;chatInput.CaretIndex=t.Length;}}); // não entendido: primeiro conversar, depois tentar como programa
    add("Aplicativo · abrir “"+t+"”",()=>CmdOpen(t));}
@@ -120,8 +124,8 @@ public partial class App {
  }
  static void CommandBox(){
   if(cmdWin!=null){cmdWin.Close();return;}
-  var box=new TextBox{Background=Brushes.Transparent,Foreground=B("#FFF8F6"),CaretBrush=Brushes.White,BorderThickness=new Thickness(0),FontSize=18,Padding=new Thickness(12,10,12,10),ToolTip="foco 25 · pausa 5 · nota texto · lembrar amanhã 9h dentista · lembrar em 10 min texto · buscar texto · hoje · volume 40 · não incomodar · abrir notepad · notas"};
-  var rows=Stack();var hint=T("hoje  ·  foco 25  ·  nota …  ·  lembrar amanhã 9h …  ·  buscar …  ·  rotinas  ·  abrir …",11,"#8E8892");hint.TextWrapping=TextWrapping.Wrap;hint.Margin=new Thickness(14,0,14,10);
+  var box=new TextBox{Background=Brushes.Transparent,Foreground=B("#FFF8F6"),CaretBrush=Brushes.White,BorderThickness=new Thickness(0),FontSize=18,Padding=new Thickness(12,10,12,10),ToolTip="foco 25 · pausa 5 · nota texto · lembrar amanhã 9h dentista · lembrar em 10 min texto · buscar texto · hoje · volume 40 · não incomodar · abrir notepad · ir para outlook · notas"};
+  var rows=Stack();var hint=T("hoje  ·  foco 25  ·  nota …  ·  lembrar amanhã 9h …  ·  buscar …  ·  rotinas  ·  abrir …  ·  ir para …",11,"#8E8892");hint.TextWrapping=TextWrapping.Wrap;hint.Margin=new Thickness(14,0,14,10);
   var items=new List<KeyValuePair<string,Action>>();int sel=0;
   Action refresh=()=>{items=CommandMatches(box.Text);if(sel>=items.Count)sel=0;rows.Children.Clear();
    for(int i=0;i<items.Count;i++)rows.Children.Add(new Border{CornerRadius=new CornerRadius(8),Margin=new Thickness(6,1,6,1),Padding=new Thickness(8,6,8,6),Background=i==sel?B("#33FFFFFF"):Brushes.Transparent,Child=T(items[i].Key,13)});

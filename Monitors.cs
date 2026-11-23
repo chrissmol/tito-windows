@@ -67,9 +67,10 @@ public partial class App {
   HwndSource.FromHwnd(hwnd).AddHook((IntPtr h,int msg,IntPtr wp,IntPtr lp,ref bool handled)=>{
    if(msg==0x312&&wp.ToInt32()==0x7157){handled=true;var screens=Forms.Screen.AllScreens;int i=Array.IndexOf(screens,Forms.Screen.FromPoint(Forms.Cursor.Position));if(i>=0&&OffMonitors().Contains(i))SetMonitor(i,true);else SignalIsland("TitoGlassOpen",i<0||i==selectedMonitor?"":"m"+i);}
    if(msg==0x312&&wp.ToInt32()==0x7158){handled=true;CommandBox();}
+   if(shellMsg!=0&&(uint)msg==shellMsg)ShellHook(wp.ToInt32(),lp);
    return IntPtr.Zero;});
   RegisterHotKey(hwnd,0x7157,0x3|0x4000,0x54); // Ctrl+Alt+T
-  hotHwnd=hwnd;ApplyHotkey();
+  hotHwnd=hwnd;ApplyHotkey();ConnectSetup(hwnd);
   w.Closed+=(s,e)=>{UnregisterHotKey(hwnd,0x7157);UnregisterHotKey(hwnd,0x7158);};
  }
  // Atalho da caixa de comando. Win+Espaço fica de fora: o Windows usa para trocar o idioma do teclado.

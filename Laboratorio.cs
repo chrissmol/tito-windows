@@ -70,6 +70,7 @@ public partial class App {
    File.WriteAllText(AgendaPath(),LabLine(now.Date.AddHours(23).AddMinutes(59),"Jantar")+"\n");summaryDay=null;
    Need(SimpleSummary().Contains("Jantar"),"resumo simples sem a agenda");Need(SummaryToday()==null,"resumo de outro dia");
    SaveSummary(now.ToString("yyyy-MM-dd"),"Teste");summaryDay=null;Need(SummaryToday()=="Teste","resumo não gravou");
+   ConnectChecks(now);
    // Fotos: agenda (com vencido), notas, área de transferência e cada tema.
    foreach(string p in new[]{"agenda","notes","clipboard"}){Switch(p);Capture(p);}
    foreach(var r in themeData){themeId=r[0];ApplyTheme(true);Switch("home");Capture("theme-"+r[0]);}

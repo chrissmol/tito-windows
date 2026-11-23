@@ -114,10 +114,12 @@ public partial class App {
   search.TextChanged+=(s,e)=>{clipFilter=search.Text.Trim();fill();};fill();
   var note=T("Senhas de gerenciadores (1Password, Bitwarden, KeePass…) e itens marcados como sensíveis não entram. Sair do Tito apaga o histórico; só os fixados ficam.",10.5,Theme.Soft);note.TextWrapping=TextWrapping.Wrap;note.Margin=new Thickness(8,8,8,4);rows.Children.Add(note);
  }
- static List<string[]> AgendaEntries(){
+ static List<string[]> LocalEntries(){
   var list=new List<string[]>();try{if(File.Exists(AgendaPath()))foreach(string line in File.ReadAllLines(AgendaPath())){var p=line.Split(new[]{'|'},3);if(p.Length==3)list.Add(p);}}catch{}
   return list.OrderBy(p=>p[0]+p[1]).ToList();
  }
+ // Lembretes locais + eventos do Google Agenda (4º campo "cal", só leitura: nunca voltam para agenda.txt).
+ static List<string[]> AgendaEntries(){var list=LocalEntries();if(calOn)list.AddRange(calEvents);return list.OrderBy(p=>p[0]+p[1]).ToList();}
  static string agendaError="";static DateTime lastAgendaCheck;static HashSet<string> agendaFired;
  // Lembretes já avisados ficam no disco (agenda-avisados.txt): o que vencer com o Tito fechado, o PC suspenso, em jogo ou no não incomodar aparece depois (até 24 h).
  static string FiredPath(){return Path.Combine(dataDir,"agenda-avisados.txt");}
@@ -127,10 +129,10 @@ public partial class App {
  static void SafeWrite(string path,string text){string tmp=path+".tmp";File.WriteAllText(tmp,text);if(File.Exists(path))File.Replace(tmp,path,null);else File.Move(tmp,path);}
  // Troca (ou apaga, com null) só a primeira entrada igual; entradas repetidas continuam.
  static void AgendaReplace(string[] entry,string[] with){
-  try{var list=AgendaEntries();int i=list.FindIndex(x=>x[0]==entry[0]&&x[1]==entry[1]&&x[2]==entry[2]);if(i<0)return;if(with==null)list.RemoveAt(i);else list[i]=with;SafeWrite(AgendaPath(),String.Concat(list.Select(x=>String.Join("|",x)+"\n")));agendaError="";}
+  try{var list=LocalEntries();int i=list.FindIndex(x=>x[0]==entry[0]&&x[1]==entry[1]&&x[2]==entry[2]);if(i<0)return;if(with==null)list.RemoveAt(i);else list[i]=with;SafeWrite(AgendaPath(),String.Concat(list.Select(x=>String.Join("|",x)+"\n")));agendaError="";}
   catch{agendaError="Não consegui salvar a agenda. Nada foi alterado.";}
  }
- static void AgendaAdd(string[] entry){try{var list=AgendaEntries();list.Add(entry);SafeWrite(AgendaPath(),String.Concat(list.Select(x=>String.Join("|",x)+"\n")));agendaError="";}catch{agendaError="Não consegui salvar a agenda. Nada foi alterado.";}}
+ static void AgendaAdd(string[] entry){try{var list=LocalEntries();list.Add(entry);SafeWrite(AgendaPath(),String.Concat(list.Select(x=>String.Join("|",x)+"\n")));agendaError="";}catch{agendaError="Não consegui salvar a agenda. Nada foi alterado.";}}
  // "[hoje|amanhã|dd/MM|yyyy-MM-dd] 14:30|9h|9h30 título" -> date yyyy-MM-dd, time HH:mm.
  static bool ParseAgenda(string text,DateTime now,out string date,out string time,out string title){
   date=time=title="";
@@ -166,7 +168,7 @@ public partial class App {
   DateTime now=DateTime.Now;if(now-lastAgendaCheck<TimeSpan.FromSeconds(1))return;lastAgendaCheck=now;bool soon=false;var due=new List<string[]>();var all=AgendaEntries();
   foreach(var p in all){DateTime at=AgendaAt(p);if(at==DateTime.MinValue)continue;
    if(at>now&&at-now<=TimeSpan.FromMinutes(10))soon=true;
-   if(at<=now&&now-at<=TimeSpan.FromHours(24)&&!Fired().Contains(String.Join("|",p)))due.Add(p);}
+   if(at<=now&&now-at<=TimeSpan.FromHours(24)&&(p.Length<4||now-at<=TimeSpan.FromMinutes(15))&&!Fired().Contains(String.Join("|",p)))due.Add(p);}
   agendaSoon=soon;
   if(due.Count==0||secondary||contextHidden||doNotDisturb)return; // continua pendente e aparece quando der
   foreach(var p in due)Fired().Add(String.Join("|",p));
@@ -184,11 +186,12 @@ public partial class App {
   rows.Children.Add(add);
   string sum=SummaryToday();if(sum!=null){var st=T(sum,12);st.TextWrapping=TextWrapping.Wrap;st.Margin=new Thickness(8,2,8,6);var sh=T("Resumo do dia",10.5,Theme.Muted);sh.Margin=new Thickness(8,6,8,0);rows.Children.Add(CardBox(new StackPanel{Children={sh,st}}));}
   if(agendaError!="")rows.Children.Add(T(agendaError,12,"#FF453A"));
-  DateTime now=DateTime.Now;string today=now.ToString("yyyy-MM-dd");var upcoming=AgendaEntries().Where(p=>{var at=AgendaAt(p);return at!=DateTime.MinValue&&now-at<=TimeSpan.FromHours(24);}).Take(12).ToList();
+  DateTime now=DateTime.Now;string today=now.ToString("yyyy-MM-dd");var upcoming=AgendaEntries().Where(p=>{var at=AgendaAt(p);return at!=DateTime.MinValue&&now-at<=TimeSpan.FromHours(p.Length==4?1:24);}).Take(20).ToList();
   if(upcoming.Count==0)rows.Children.Add(T("Nada marcado. Crie um lembrete para não esquecer: digite “amanhã 9h Dentista” e Enter.",13,"#BDBDC5"));
-  foreach(var p in upcoming){var row=Stack(Orientation.Horizontal);bool overdue=AgendaAt(p)<=now;string when=p[0]==today?p[1]:DateTime.ParseExact(p[0],"yyyy-MM-dd",CultureInfo.InvariantCulture).ToString("dd/MM",CultureInfo.InvariantCulture)+" "+p[1];
+  foreach(var p in upcoming){var row=Stack(Orientation.Horizontal);bool google=p.Length==4;bool overdue=!google&&AgendaAt(p)<=now;string when=p[0]==today?p[1]:DateTime.ParseExact(p[0],"yyyy-MM-dd",CultureInfo.InvariantCulture).ToString("dd/MM",CultureInfo.InvariantCulture)+" "+p[1];
    var t=T(when,12,overdue?Theme.Warn:p[0]==today?"#FFB36B":Theme.Muted);t.Width=84;row.Children.Add(t);var title=T(p[2],13);title.MaxWidth=330;title.TextTrimming=TextTrimming.CharacterEllipsis;row.Children.Add(title);
    var entry=p;
+   if(google){var tag=T("Google",10.5,Theme.Soft);tag.Margin=new Thickness(8,2,0,0);row.Children.Add(tag);row.Margin=new Thickness(0,3,0,3);rows.Children.Add(row);continue;}
    if(overdue){var later=Btn("+5 min",()=>{var at=DateTime.Now.AddMinutes(5);AgendaReplace(entry,new[]{at.ToString("yyyy-MM-dd",CultureInfo.InvariantCulture),at.ToString("HH:mm",CultureInfo.InvariantCulture),entry[2]});Switch("agenda");},"Adiar 5 minutos");later.Padding=new Thickness(6,2,6,2);row.Children.Add(later);}
    var done=Btn(overdue?"✓":"✕",()=>{AgendaReplace(entry,null);Switch("agenda");if(agendaError=="")Undoable(overdue?"Lembrete concluído":"Lembrete removido",()=>AgendaAdd(entry));},overdue?"Concluído":"Remover");done.Padding=new Thickness(6,2,6,2);row.Children.Add(done);row.Margin=new Thickness(0,3,0,3);rows.Children.Add(row);}
  }
