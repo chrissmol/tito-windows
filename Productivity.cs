@@ -107,7 +107,7 @@ public partial class App {
   var list=Stack();rows.Children.Add(list);
   Action fill=()=>{list.Children.Clear();
   var pins=Pins().Where(match).ToList();var recent=clipItems.Where(t=>match(t)&&!Pins().Contains(t)).ToList();
-  if(pins.Count==0&&recent.Count==0){var empty=T(clipFilter==""?"Copie um texto e ele aparece aqui. O histórico fica só na memória; fixe (📌) o que quiser guardar.":"Nada encontrado.",13,"#BDBDC5");empty.TextWrapping=TextWrapping.Wrap;list.Children.Add(empty);}
+  if(pins.Count==0&&recent.Count==0){var empty=T(clipFilter==""?"Copie um texto e ele aparece aqui. O histórico fica só na memória; fixe (📌) o que quiser guardar.":"Nada encontrado.",13,"#BDBDC5");empty.TextWrapping=TextWrapping.Wrap;empty.FontSize=Theme.Body;empty.Margin=new Thickness(8,6,8,6);list.Children.Add(empty);}
   foreach(string item in pins.Concat(recent)){string text=item;bool pinned=Pins().Contains(text);string line=text.Replace("\r"," ").Replace("\n"," ");
    var row=new DockPanel{Margin=new Thickness(0,1,0,1)};
    var pin=Btn(pinned?"✕":"📌",()=>{if(pinned)Pins().Remove(text);else{Pins().Remove(text);Pins().Insert(0,text);if(Pins().Count>30)Pins().RemoveAt(30);}SavePins();Switch("clipboard");},pinned?"Desafixar":"Fixar (salva no disco)");DockPanel.SetDock(pin,Dock.Right);row.Children.Add(pin);
