@@ -88,9 +88,9 @@ public partial class App {
   var bar=Stack(Orientation.Horizontal);bar.Margin=new Thickness(0,0,0,6);int total=NotePages();
   for(int n=1;n<=total;n++){int pg=n;var tab=Btn(NoteTitle(n),()=>GoNotePage(pg),"Página "+n);tab.Padding=new Thickness(8,2,8,2);if(n==notesPage)tab.Background=B("#40FFFFFF");bar.Children.Add(tab);}
   var more=Btn("+",()=>{int next=NotePages()+1;try{File.WriteAllText(NotesPath(next),"");}catch{}GoNotePage(next);},"Nova página");more.Padding=new Thickness(8,2,8,2);bar.Children.Add(more);var export=Btn("⇩",ExportNotes,"Exportar todas as páginas em .md");export.Padding=new Thickness(8,2,8,2);bar.Children.Add(export);var wipe=Btn("🗑",()=>{string old=notesBox.Text;if(old=="")return;notesBox.Text="";FlushNotes();Undoable("Página apagada",()=>{notesPending=old;FlushNotes();});},"Apagar o texto desta página");wipe.Padding=new Thickness(8,2,8,2);bar.Children.Add(wipe);
-  var find=new TextBox{Width=110,Background=B("#18FFFFFF"),Foreground=B(Theme.Text),CaretBrush=Brushes.White,BorderThickness=new Thickness(0),Padding=new Thickness(6,3,6,3),FontSize=11,Margin=new Thickness(8,0,0,0),ToolTip="Buscar nas páginas (Enter)"};
+  var find=new TextBox{Width=130,Padding=new Thickness(8,3,8,3),FontSize=Theme.Caption,Margin=new Thickness(8,0,0,0),Tag="Buscar nas notas",ToolTip="Buscar nas páginas (Enter)"};
   find.KeyDown+=(s2,e2)=>{if(e2.Key!=System.Windows.Input.Key.Enter||find.Text.Trim()=="")return;FlushNotes();int count=NotePages();for(int k=1;k<=count;k++){int n=(notesPage-1+k)%count+1;try{if(File.ReadAllText(NotesPath(n)).IndexOf(find.Text.Trim(),StringComparison.CurrentCultureIgnoreCase)>=0){GoNotePage(n);return;}}catch{}}find.Text="Nada encontrado";};bar.Children.Add(find);notesState=T("",11,Theme.Muted);notesState.Margin=new Thickness(8,0,0,0);bar.Children.Add(notesState);rows.Children.Add(bar);
-  notesBox=new TextBox{Text=saved,AcceptsReturn=true,TextWrapping=TextWrapping.Wrap,Background=B("#18FFFFFF"),Foreground=B(Theme.Text),CaretBrush=Brushes.White,BorderThickness=new Thickness(0),Padding=new Thickness(10),FontSize=13,MinHeight=130,VerticalScrollBarVisibility=ScrollBarVisibility.Auto};
+  notesBox=new TextBox{Text=saved,AcceptsReturn=true,TextWrapping=TextWrapping.Wrap,Tag="Escreva aqui. A primeira linha vira o título da página.",VerticalContentAlignment=VerticalAlignment.Top,Padding=new Thickness(10),FontSize=13,MinHeight=130,VerticalScrollBarVisibility=ScrollBarVisibility.Auto};
   notesBox.TextChanged+=(s,e)=>{HideUndo();typingUntil=DateTime.UtcNow.AddSeconds(3);notesPending=notesBox.Text;notesState.Text="Salvando…";notesState.Foreground=B(Theme.Muted);if(notesSave==null){notesSave=new System.Windows.Threading.DispatcherTimer{Interval=TimeSpan.FromMilliseconds(600)};notesSave.Tick+=(a,b)=>FlushNotes();w.Closed+=(a,b)=>FlushNotes();}notesSave.Stop();notesSave.Start();};rows.Children.Add(notesBox);
  }
  // Só os itens fixados vão para o disco (clip-pinned.json); o histórico continua só na memória.
@@ -100,7 +100,7 @@ public partial class App {
  static void SavePins(){try{SafeWrite(PinPath(),json.Serialize(Pins()));}catch{error="Não consegui salvar os fixados no disco. Eles continuam até fechar o Tito.";ShowError();}}
  static void ClipboardPage(){
   ScrollViewer sc;var rows=Panel("Área de transferência",out sc,Btn("Limpar",()=>{clipItems.Clear();Switch("clipboard");},"Limpa o histórico; os fixados ficam"));
-  var search=new TextBox{Text=clipFilter,Background=B("#18FFFFFF"),Foreground=B(Theme.Text),CaretBrush=Brushes.White,BorderThickness=new Thickness(0),Padding=new Thickness(8,5,8,5),FontSize=12,ToolTip="Digite para buscar no histórico e nos fixados",Margin=new Thickness(0,0,0,6)};
+  var search=new TextBox{Text=clipFilter,Tag="Buscar no histórico e nos fixados",ToolTip="Digite para buscar no histórico e nos fixados",Margin=new Thickness(0,0,0,6)};
   rows.Children.Add(search);
   Func<string,bool> match=t=>clipFilter==""||t.IndexOf(clipFilter,StringComparison.CurrentCultureIgnoreCase)>=0;
   rows.Children.Add(ToggleRow("Pausar o histórico",clipPaused,v=>clipPaused=v));
@@ -181,7 +181,7 @@ public partial class App {
  }
  static void Agenda(){
   ScrollViewer sc;var rows=Panel("Agenda",out sc);
-  var add=new TextBox{Background=B("#18FFFFFF"),Foreground=B(Theme.Text),CaretBrush=Brushes.White,BorderThickness=new Thickness(0),Padding=new Thickness(8,5,8,5),FontSize=12,ToolTip="14:30 Reunião  ·  amanhã 9h Dentista  ·  25/11 18h30 Jantar  ·  2026-11-20 09:00 Médico",Margin=new Thickness(0,0,0,6)};
+  var add=new TextBox{Tag="Novo lembrete: 14:30 Reunião · amanhã 9h Dentista",ToolTip="14:30 Reunião  ·  amanhã 9h Dentista  ·  25/11 18h30 Jantar  ·  2026-11-20 09:00 Médico",Margin=new Thickness(0,0,0,6)};
   add.KeyDown+=(s,e)=>{if(e.Key!=System.Windows.Input.Key.Enter||String.IsNullOrWhiteSpace(add.Text))return;
    string date,time,title;if(!ParseAgenda(add.Text,DateTime.Now,out date,out time,out title)){agendaError="Não entendi. Tente: 14:30 Reunião · amanhã 9h Dentista · 25/11 18h30 Jantar";Switch("agenda");return;}
    agendaError="";try{File.AppendAllText(AgendaPath(),date+"|"+time+"|"+title.Replace("|"," ")+"\n");}catch{agendaError="Não consegui salvar a agenda.";}celebrateUntil=DateTime.UtcNow.AddSeconds(2);Switch("agenda");};
