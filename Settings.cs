@@ -55,6 +55,14 @@ public partial class App {
   var c=new ComboBox{Height=28,Margin=new Thickness(4,0,4,6)};foreach(int o in opts)c.Items.Add(new ComboBoxItem{Content=label+" "+o+"%",Tag=o});
   c.SelectedIndex=Math.Max(0,Array.IndexOf(opts,cur));c.SelectionChanged+=(s,e)=>{var it=c.SelectedItem as ComboBoxItem;if(it!=null){set((int)it.Tag);SavePrefs();}};return c;
  }
+ static UIElement FocusCard(){
+  var box=Stack();var title=T("Durante o foco",12,Theme.Heading);title.FontWeight=FontWeights.SemiBold;title.Margin=new Thickness(8,6,0,6);box.Children.Add(title);
+  box.Children.Add(ToggleRow("Ligar não incomodar",focusDnd,v=>{focusDnd=v;SavePrefs();}));
+  box.Children.Add(ToggleRow("Minimizar apps de distração",focusHide,v=>{focusHide=v;SavePrefs();}));
+  box.Children.Add(Field("Apps a minimizar","nomes dos programas, separados por vírgula",focusApps,v=>{focusApps=v;SavePrefs();},0,false));
+  var note=T("Ao pausar ou terminar, o não incomodar volta ao que estava antes. Nada é fechado, só minimizado.",10.5,Theme.Soft);note.TextWrapping=TextWrapping.Wrap;note.Margin=new Thickness(8,4,8,6);box.Children.Add(note);
+  return CardBox(box);
+ }
  static UIElement PcCard(){
   var box=Stack();var title=T("Uso do PC na cápsula",12,Theme.Heading);title.FontWeight=FontWeights.SemiBold;title.Margin=new Thickness(8,6,0,6);box.Children.Add(title);
   box.Children.Add(ToggleRow("Mostrar CPU, memória e bateria",pcOn,v=>{pcOn=v;if(!v){cpuHigh=memHigh=false;}SavePrefs();}));
@@ -83,7 +91,7 @@ public partial class App {
   var left=Stack();left.Margin=new Thickness(0,0,5,0);
   var switches=Stack();switches.Children.Add(ToggleRow("Não incomodar",doNotDisturb,v=>doNotDisturb=v));switches.Children.Add(ToggleRow("Iniciar com o Windows",AutostartOn(),SetAutostart));switches.Children.Add(ToggleRow("Manter acordado",keepAwake,SetKeepAwake));left.Children.Add(CardBox(switches));
   var open=Stack();open.Children.Add(ToggleRow("Abrir ao passar o mouse",!clickOnly,v=>{clickOnly=!v;SavePrefs();}));open.Children.Add(ToggleRow("Fixar aberto",pinOpen,v=>{pinOpen=v;SavePrefs();}));left.Children.Add(CardBox(open));
-  left.Children.Add(PrivacyCard());left.Children.Add(ShortcutCard());left.Children.Add(PcCard());left.Children.Add(ConnectCard());
+  left.Children.Add(PrivacyCard());left.Children.Add(ShortcutCard());left.Children.Add(FocusCard());left.Children.Add(PcCard());left.Children.Add(ConnectCard());
   var links=Stack();links.Children.Add(LinkRow("Prateleira",()=>Switch("shelf")));links.Children.Add(LinkRow("Rever apresentação",TourStart));links.Children.Add(LinkRow("Editar rotinas",EditRoutines));links.Children.Add(LinkRow("Áudio",()=>Switch("audio")));links.Children.Add(LinkRow("Conectar Claude",()=>Switch("agent")));left.Children.Add(CardBox(links));left.Children.Add(MonitorsCard());
   var right=Stack();right.Margin=new Thickness(5,0,0,0);Grid.SetColumn(right,1);
   var robo=Stack();var title=T("Robo · IA local",12,Theme.Heading);title.FontWeight=FontWeights.SemiBold;title.Margin=new Thickness(8,6,0,6);robo.Children.Add(title);

@@ -156,8 +156,20 @@ public partial class App {
   focusSavedMin=(int)(focusToday/60);
  }
  static string FocusTodayText(){if(secondary||focusDay=="")FocusLoad();int m=(int)(focusToday/60);return "Hoje: "+(m>=60?(m/60)+" h "+(m%60)+" min":m+" min")+" de foco";}
+ // Foco ligado liga o "não incomodar" (restaura o estado anterior ao parar) e minimiza apps de distração, sem fechar nada.
+ static bool focusDnd=true,focusHide=true,focusActive,dndBefore;
+ static string focusApps="discord,whatsapp,telegram,steam,epicgameslauncher,battle.net,roblox,minecraft";
+ static void FocusGuard(){
+  bool on=running&&!onBreak;if(on==focusActive)return;focusActive=on;
+  if(on){
+   if(focusDnd){dndBefore=doNotDisturb;doNotDisturb=true;}
+   if(focusHide){var names=focusApps.Split(new[]{',',';','\n'},StringSplitOptions.RemoveEmptyEntries).Select(x=>x.Trim().ToLowerInvariant()).Where(x=>x.Length>0).ToList();
+    winCacheAt=DateTime.MinValue;foreach(var w in OpenWindows())if(names.Any(n=>w.Proc.ToLowerInvariant()==n||w.Proc.ToLowerInvariant()==n.Replace(".exe","")))Nw.ShowWindow(w.H,6);}
+  }else if(focusDnd)doNotDisturb=dndBefore;
+  SavePrefs();
+ }
  static void FocusTick(){
-  if(secondary)return;
+  if(secondary)return;FocusGuard();
   if(focusDay!=DateTime.Now.ToString("yyyy-MM-dd"))FocusLoad();
   var now=DateTime.UtcNow;if(running&&!onBreak&&focusLast!=DateTime.MinValue)focusToday+=Math.Min(2,(now-focusLast).TotalSeconds);
   bool stopped=!running&&focusLast!=DateTime.MinValue;focusLast=running?now:DateTime.MinValue;
